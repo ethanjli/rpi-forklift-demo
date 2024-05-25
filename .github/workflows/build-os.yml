@@ -88,7 +88,7 @@ jobs:
 
       - name: Run pishrink
         run: |
-          curl -o / https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+          wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
           chmod a+x pishrink.sh
           ./pishrink.sh -za ${{ env.OUTPUT_IMAGE_NAME }}.img
 
