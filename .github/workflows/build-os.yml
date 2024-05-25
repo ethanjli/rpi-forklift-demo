@@ -44,7 +44,7 @@ jobs:
           BASE_IMAGE_RELEASE_CHANNEL: ${{ inputs.base_release_name == 'bookworm' && 'raspios' || 'raspios_oldstable' }}
           BASE_IMAGE_REPO_GROUP: ${{ env.BASE_IMAGE_RELEASE_CHANNEL }}${{ inputs.base_image_variant != 'desktop' && format('_{0}', inputs.base_image_variant) }}_${{ matrix.arch }}
           BASE_IMAGE_FILENAME: ${{ env.BASE_RELEASE_DATE }}-raspios-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}${{ inputs.base_image_variant != 'desktop' && format('-{0}', inputs.base_image_variant) }}.img.xz
-          BASE_IMAGE: https://downloads.raspberrypi.com/${{ env.BASE_IMAGE_REPO_GROUP }}/images/${{ env.BASE_IMAGE_REPO_GROUP }}-${{ env.BASE_RELEASE_DATE }}/${{ BASE_IMAGE_FILENAME }}
+          BASE_IMAGE: https://downloads.raspberrypi.com/${{ env.BASE_IMAGE_REPO_GROUP }}/images/${{ env.BASE_IMAGE_REPO_GROUP }}-${{ env.BASE_RELEASE_DATE }}/${{ env.BASE_IMAGE_FILENAME }}
         with:
           pifile: Pifile
 
