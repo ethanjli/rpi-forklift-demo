@@ -1,0 +1,8 @@
+FROM @@BASE_IMAGE@@
+TO @@OUTPUT_IMAGE@@.img
+
+PUMP 8G
+
+INSTALL os-setup /tmp/
+RUN /tmp/os-setup/setup.sh
+RUN /tmp/os-setup/cleanup.sh

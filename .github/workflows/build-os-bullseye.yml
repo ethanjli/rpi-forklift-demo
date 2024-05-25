@@ -1,0 +1,46 @@
+---
+name: build-os-bullseye
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**/README.md'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/README.md'
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    strategy:
+      fail-fast: false
+      matrix:
+        variant_name:
+          - lite
+          - desktop
+        arch:
+          - arm64
+    env:
+      BASE_RELEASE_CHANNEL: raspios_oldstable
+      BASE_RELEASE_VARIANT: ${{ matrix.variant_name != 'desktop' && format('_{0}', matrix.variant_name) }}
+      BASE_RELEASE_NAME: bullseye
+      BASE_RELEASE_DATE: 2024-03-12
+      BASE_RELEASE_SUFFIX: ${{ matrix.variant_name != 'desktop' && format('-{0}', matrix.variant_name) }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/build-os.yml
+    secrets: inherit
+    with:
+      name: rpi-forklift-demo-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}-${{ matrix.variant_name }}
+      base_image: https://downloads.raspberrypi.com/${{ env.BASE_RELEASE_CHANNEL }}${{ env.BASE_RELEASE_VARIANT }}_${{ matrix.arch }}/images/${{ env.BASE_RELEASE_CHANNEL }}${{ env.BASE_RELEASE_VARIANT }}_${{ matrix.arch }}-${{ env.BASE_RELEASE_DATE }}/${{ env.BASE_RELEASE_DATE }}-raspios-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}${{ env.BASE_RELEASE_SUFFIX }}.img.xz

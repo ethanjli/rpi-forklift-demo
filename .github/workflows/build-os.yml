@@ -1,0 +1,43 @@
+name: build-os
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: 'The name of the OS image to build'
+        required: true
+        type: string
+      base_image:
+        description: 'The URL of the file to use as the base OS image'
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+    env:
+      BASE_IMAGE: ${{ inputs.base_image }}
+      OUTPUT_IMAGE: ${{ inputs.name }}.img
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      # Checkout push-to-registry action GitHub repository
+      - name: Checkout Push to Registry action
+        uses: actions/checkout@v4
+
+      - name: Run Pimod
+        uses: Natur40/pimod@v0.6.0
+        with:
+          pifile: Pifile
+
+      - name: Upload image to Job Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.name }}
+          path: ${{ env.OUTPUT_IMAGE }}
+          if-no-files-found: error
+          retention-days: 0
+          compression-level: 0
+          overwrite: true
