@@ -57,7 +57,7 @@ jobs:
             BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
           fi
           BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.arch }}"
-          BASE_IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}"
+          BASE_IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}-${{ inputs.arch }}"
           if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
             BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
           fi
