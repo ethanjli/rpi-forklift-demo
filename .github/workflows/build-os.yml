@@ -6,8 +6,20 @@ on:
         description: 'The name of the OS image to build'
         required: true
         type: string
-      base_image:
-        description: 'The URL of the file to use as the base OS image'
+      base_release_name:
+        description: 'The release name of the RPi OS base image (bullseye, bookworm)'
+        required: true
+        type: string
+      base_image_variant:
+        description: 'The name of the RPi OS base image variant (lite, desktop, or full)'
+        required: true
+        type: string
+      base_release_date:
+        description: 'The release date of the RPi OS base image'
+        required: true
+        type: string
+      arch:
+        description: 'The CPU architecture of the OS (armhf, arm64)'
         required: true
         type: string
 
@@ -16,8 +28,7 @@ jobs:
     name: Build image
     runs-on: ubuntu-latest
     env:
-      BASE_IMAGE: ${{ inputs.base_image }}
-      OUTPUT_IMAGE: ${{ inputs.name }}.img
+      OUTPUT_IMAGE_NAME: ${{ inputs.name }}-${{ inputs.base_release_name }}-${{ inputs.arch }}-${{ inputs.base_image_variant }}
     permissions:
       contents: read
       packages: write
@@ -29,14 +40,19 @@ jobs:
 
       - name: Run Pimod
         uses: Nature40/pimod@v0.6.0
+        env:
+          BASE_IMAGE_RELEASE_CHANNEL: ${{ inputs.base_release_name == 'bookworm' && 'raspios' || 'raspios_oldstable' }}
+          BASE_IMAGE_REPO_GROUP: ${{ env.BASE_IMAGE_RELEASE_CHANNEL }}${{ inputs.base_image_variant != 'desktop' && format('_{0}', inputs.base_image_variant) }}_${{ matrix.arch }}
+          BASE_IMAGE_FILENAME: ${{ env.BASE_RELEASE_DATE }}-raspios-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}${{ inputs.base_image_variant != 'desktop' && format('-{0}', inputs.base_image_variant) }}.img.xz
+          BASE_IMAGE: https://downloads.raspberrypi.com/${{ env.BASE_IMAGE_REPO_GROUP }}/images/${{ env.BASE_IMAGE_REPO_GROUP }}-${{ env.BASE_RELEASE_DATE }}/${{ BASE_IMAGE_FILENAME }}
         with:
           pifile: Pifile
 
       - name: Upload image to Job Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.name }}
-          path: ${{ env.OUTPUT_IMAGE }}
+          name: ${{ env.OUTPUT_IMAGE_NAME }}
+          path: ${{ env.OUTPUT_IMAGE_NAME }}.img
           if-no-files-found: error
           retention-days: 0
           compression-level: 0
