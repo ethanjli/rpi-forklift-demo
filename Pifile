@@ -1,3 +1,5 @@
+# Note: the env vars used in the FROM directive and TO directives are not substituted by Pimod, so
+# they must instead be substituted by GitHub Actions:
 FROM @@BASE_IMAGE@@
 TO @@OUTPUT_IMAGE_NAME@@.img
 

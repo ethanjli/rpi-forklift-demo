@@ -65,6 +65,13 @@ jobs:
           BASE_IMAGE="https://downloads.raspberrypi.com/${{ env.BASE_IMAGE_REPO_GROUP }}/images/${{ env.BASE_IMAGE_REPO_GROUP }}-${{ inputs.base_release_date }}/${{ env.BASE_IMAGE_FILENAME }}"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
+      - name: Prepare Pifile
+        run: |
+          sed -i \
+            -e 's/@@BASE_IMAGE@@/${{ env.BASE_IMAGE }}/g' \
+            -e 's/@@OUTPUT_IMAGE_NAME@@/${{ env.OUTPUT_IMAGE_NAME }}/g' \
+            Pifile
+
       - name: Run Pimod
         uses: Nature40/pimod@v0.6.0
         with:
