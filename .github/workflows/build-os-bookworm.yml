@@ -18,6 +18,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  BASE_RELEASE_CHANNEL: raspios
+  BASE_RELEASE_NAME: bookworm
+  BASE_RELEASE_DATE: 2024-03-15
+
 jobs:
   build:
     name: build
@@ -29,12 +34,6 @@ jobs:
           - desktop
         arch:
           - arm64
-    env:
-      BASE_RELEASE_CHANNEL: raspios
-      BASE_RELEASE_VARIANT: ${{ matrix.variant_name != 'desktop' && format('_{0}', matrix.variant_name) }}
-      BASE_RELEASE_NAME: bookworm
-      BASE_RELEASE_DATE: 2024-03-15
-      BASE_RELEASE_SUFFIX: ${{ matrix.variant_name != 'desktop' && format('-{0}', matrix.variant_name) }}
     permissions:
       contents: read
       packages: write
@@ -43,4 +42,4 @@ jobs:
     secrets: inherit
     with:
       name: rpi-forklift-demo-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}-${{ matrix.variant_name }}
-      base_image: https://downloads.raspberrypi.com/${{ env.BASE_RELEASE_CHANNEL }}${{ env.BASE_RELEASE_VARIANT }}_${{ matrix.arch }}/images/${{ env.BASE_RELEASE_CHANNEL }}${{ env.BASE_RELEASE_VARIANT }}_${{ matrix.arch }}-${{ env.BASE_RELEASE_DATE }}/${{ env.BASE_RELEASE_DATE }}-raspios-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}${{ env.BASE_RELEASE_SUFFIX }}.img.xz
+      base_image: https://downloads.raspberrypi.com/${{ env.BASE_RELEASE_CHANNEL }}${{ matrix.variant_name != 'desktop' && format('_{0}', matrix.variant_name) }}_${{ matrix.arch }}/images/${{ env.BASE_RELEASE_CHANNEL }}${{ matrix.variant_name != 'desktop' && format('_{0}', matrix.variant_name) }}_${{ matrix.arch }}-${{ env.BASE_RELEASE_DATE }}/${{ env.BASE_RELEASE_DATE }}-raspios-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}${{ matrix.variant_name != 'desktop' && format('-{0}', matrix.variant_name) }}.img.xz
