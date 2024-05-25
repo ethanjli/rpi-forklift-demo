@@ -65,6 +65,9 @@ jobs:
           BASE_IMAGE="https://downloads.raspberrypi.com/$BASE_IMAGE_REPO_GROUP/images/$BASE_IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$BASE_IMAGE_FILENAME"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
+      - name: Prepare Pimod download cache for GitHub Actions caching
+        run: mkdir -p /var/cache/pimod
+
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
