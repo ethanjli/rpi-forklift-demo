@@ -38,13 +38,36 @@ jobs:
       - name: Checkout Push to Registry action
         uses: actions/checkout@v4
 
+      - name: Determine Raspberry Pi OS base image URL
+        run: |
+          case '${{ inputs.base_release_name }}' in
+            'bookworm')
+              BASE_IMAGE_RELEASE_CHANNEL='raspios'
+              ;;
+            'bullseye')
+              BASE_IMAGE_RELEASE_CHANNEL='raspios_oldstable'
+              ;;
+            *)
+              echo "Unknown release name: ${{ inputs.base_release_name }}"
+              exit 1
+              ;;
+          esac
+          BASE_IMAGE_REPO_GROUP="$BASE_IMAGE_RELEASE_CHANNEL"
+          if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
+            BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
+          fi
+          BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.arch }}"
+          BASE_IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}"
+          if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
+            BASE_IMAGE_FILENAME="${BASE_IMAGE_REPO_GROUP}-${{ inputs.base_image_variant }}"
+          fi
+          BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}.img.xz"
+          BASE_IMAGE="https://downloads.raspberrypi.com/${{ env.BASE_IMAGE_REPO_GROUP }}/images/${{ env.BASE_IMAGE_REPO_GROUP }}-${{ inputs.base_release_date }}/${{ env.BASE_IMAGE_FILENAME }}"
+          echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
+
       - name: Run Pimod
         uses: Nature40/pimod@v0.6.0
         env:
-          BASE_IMAGE_RELEASE_CHANNEL: ${{ inputs.base_release_name == 'bookworm' && 'raspios' || 'raspios_oldstable' }}
-          BASE_IMAGE_REPO_GROUP: ${{ env.BASE_IMAGE_RELEASE_CHANNEL }}${{ inputs.base_image_variant != 'desktop' && format('_{0}', inputs.base_image_variant) }}_${{ matrix.arch }}
-          BASE_IMAGE_FILENAME: ${{ env.BASE_RELEASE_DATE }}-raspios-${{ env.BASE_RELEASE_NAME }}-${{ matrix.arch }}${{ inputs.base_image_variant != 'desktop' && format('-{0}', inputs.base_image_variant) }}.img.xz
-          BASE_IMAGE: https://downloads.raspberrypi.com/${{ env.BASE_IMAGE_REPO_GROUP }}/images/${{ env.BASE_IMAGE_REPO_GROUP }}-${{ env.BASE_RELEASE_DATE }}/${{ env.BASE_IMAGE_FILENAME }}
         with:
           pifile: Pifile
 
