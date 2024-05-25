@@ -83,11 +83,16 @@ jobs:
         with:
           pifile: Pifile
 
+      - name: Run pishrink
+        run: |
+          wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+          sudo ./pishrink.sh -za ${{ env.OUTPUT_IMAGE_NAME }}.img
+
       - name: Upload image to Job Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.OUTPUT_IMAGE_NAME }}
-          path: ${{ env.OUTPUT_IMAGE_NAME }}.img
+          path: ${{ env.OUTPUT_IMAGE_NAME }}.img.gz
           if-no-files-found: error
           retention-days: 0
           compression-level: 0
