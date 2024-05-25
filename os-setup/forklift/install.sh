@@ -23,6 +23,7 @@ sudo ln -s "forklift-${forklift_version}" /usr/bin/forklift
 
 FORKLIFT_WORKSPACE="$HOME"
 forklift plt switch --no-cache-img $pallet_path@$pallet_version
+# Note: when running inside Pimod, Docker is not available:
 if [ -S /var/run/docker.sock ]; then
   # Note: the pi user will only be able to run `forklift stage plan` and `forklift stage cache-img`
   # without root permissions after a reboot, so we need `sudo -E` here; I tried running
@@ -57,4 +58,7 @@ sudo systemctl preset \
 # current (i.e. default) user's default Forklift workspace:
 sudo mkdir -p /var/lib/forklift
 sudo mv $FORKLIFT_WORKSPACE/.local/share/forklift/stages /var/lib/forklift/stages
-sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service" --now
+# Note: when running inside Pimod, the systemd bus is not available:
+if ! sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service" --now; then
+  sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service"
+fi
