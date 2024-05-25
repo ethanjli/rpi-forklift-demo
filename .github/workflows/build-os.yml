@@ -90,7 +90,7 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
           chmod a+x pishrink.sh
-          ./pishrink.sh -za ${{ env.OUTPUT_IMAGE_NAME }}.img
+          sudo ./pishrink.sh -za ${{ env.OUTPUT_IMAGE_NAME }}.img
 
       - name: Upload image to Job Artifacts
         uses: actions/upload-artifact@v4
