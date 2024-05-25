@@ -67,7 +67,6 @@ jobs:
 
       - name: Run Pimod
         uses: Nature40/pimod@v0.6.0
-        env:
         with:
           pifile: Pifile
 
