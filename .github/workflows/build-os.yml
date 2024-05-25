@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Pimod
-        uses: Natur40/pimod@v0.6.0
+        uses: Nature40/pimod@v0.6.0
         with:
           pifile: Pifile
 
