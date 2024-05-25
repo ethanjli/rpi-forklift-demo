@@ -10,7 +10,7 @@ config_files_root=$(dirname $(realpath $BASH_SOURCE))
 # Install Forklift
 
 forklift_version="0.7.2-alpha.6"
-pallet_path="github.com/PlanktoScope/pallet-example-minimal"
+pallet_path="github.com/ethanjli/pallet-example-minimal"
 pallet_version="f2ea1b4"
 
 arch="$(dpkg --print-architecture | sed -e 's/armhf/arm/' -e 's/aarch64/arm64/')"
