@@ -59,7 +59,7 @@ jobs:
           BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.arch }}"
           BASE_IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}"
           if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
-            BASE_IMAGE_FILENAME="${BASE_IMAGE_REPO_GROUP}-${{ inputs.base_image_variant }}"
+            BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
           fi
           BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}.img.xz"
           BASE_IMAGE="https://downloads.raspberrypi.com/$BASE_IMAGE_REPO_GROUP/images/$BASE_IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$BASE_IMAGE_FILENAME"
