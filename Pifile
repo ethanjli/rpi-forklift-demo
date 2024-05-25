@@ -5,6 +5,6 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 
 PUMP 8G
 
-INSTALL os-setup /tmp/
+INSTALL os-setup /tmp/os-setup
 RUN /tmp/os-setup/setup.sh
 RUN /tmp/os-setup/cleanup.sh
