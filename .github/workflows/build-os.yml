@@ -84,14 +84,13 @@ jobs:
             curl -o "$cached_download" "${{ env.BASE_IMAGE_URL }}"
           fi
 
-          tmpfile=$(mktemp -u)
-          mime=$(file -b --mime-type "$cached_download")
+          tmpfile="$(mktemp -u)"
+          mime="$(file -b --mime-type "$cached_download")"
           case "$mime" in
             application/octet-stream)
               cp "$cached_download" "${tmpfile}"
               ;;
-            application/gzip)
-            application/x-gzip)
+            application/gzip | application/x-gzip)
               gunzip -c "$cached_download" > "$tmpfile"
               ;;
             application/x-xz)
