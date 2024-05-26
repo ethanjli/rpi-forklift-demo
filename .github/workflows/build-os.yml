@@ -186,10 +186,6 @@ jobs:
               tar -xJf -
             export ARCH=arm64
             export CROSS_COMPILE=/bin/aarch64-linux-gnu-
-            make -C "$kernel_dir" defconfig # make a .config file
-            make -C "$kernel_dir" nopm.config
-            make -C "$kernel_dir" virt.config
-            make -C "$kernel_dir" kvm_guest.config
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/crypto/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/gpu/drm/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/hid/Kconfig"
@@ -213,8 +209,11 @@ jobs:
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/scsi/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/soc/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/thermal/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/usb/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/vdpa/Kconfig"
+            make -C "$kernel_dir" defconfig # make a .config file
+            make -C "$kernel_dir" nopm.config
+            make -C "$kernel_dir" virt.config
+            make -C "$kernel_dir" kvm_guest.config
             make -C "$kernel_dir" -j8 # build the kernel
             mkdir -p .cache/vm-kernels/
             cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
