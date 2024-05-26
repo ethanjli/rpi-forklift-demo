@@ -1,0 +1,15 @@
+[Unit]
+Description=Perform OS setup during first boot
+After=getty.service
+After=multi-user.target
+
+[Service]
+type=oneshot
+ExecStartPre=echo "Running OS setup..."
+ExecStart=/run/os-setup/ci-setup.sh
+ExecStartPost=shutdown now
+StandardOutput=tty
+TTYPath=/dev/tty1
+
+[Install]
+WantedBy=multi-user.target

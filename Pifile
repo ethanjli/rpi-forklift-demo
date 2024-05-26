@@ -1,9 +1,0 @@
-# Note: the env vars used in the FROM directive and TO directives are not substituted by Pimod, so
-# they must instead be substituted by GitHub Actions:
-FROM @@BASE_IMAGE@@
-TO @@OUTPUT_IMAGE_NAME@@.img
-
-PUMP 8G
-
-INSTALL os-setup /run/os-setup
-RUN /usr/bin/su - pi /run/os-setup/ci-setup.sh
