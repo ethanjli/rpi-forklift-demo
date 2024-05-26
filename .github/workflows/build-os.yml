@@ -26,8 +26,7 @@ on:
 jobs:
   build:
     name: Build image
-    # We need Ubuntu 24.04 to get a version of QEMU new enough to provide a RPi 4 machine type
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       OUTPUT_IMAGE_NAME: ${{ inputs.name }}-${{ inputs.base_release_name }}-${{ inputs.arch }}-${{ inputs.base_image_variant }}
     permissions:
@@ -148,6 +147,10 @@ jobs:
           # "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of cgroups
           # results in error "failed to start daemon: Devices cgroup isn't mounted").
           image="${{ steps.download-base.outputs.mountable_image }}"
+          docker run -it --rm \
+            -e "RAM_SIZE=4G" -e "CPU_CORES=4" -e "ARGUMENTS='-machine help'" \
+            --device=/dev/kvm --cap-add NET_ADMIN \
+            qemux/qemu-arm
           qemu-system-aarch64 -machine help
           qemu-system-aarch64 \
             -machine raspi4b -cpu cortex-a72 -nographic \
