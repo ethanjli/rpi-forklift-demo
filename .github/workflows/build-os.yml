@@ -62,31 +62,51 @@ jobs:
             BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
           fi
           BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}.img.xz"
-          BASE_IMAGE="https://downloads.raspberrypi.com/$BASE_IMAGE_REPO_GROUP/images/$BASE_IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$BASE_IMAGE_FILENAME"
-          echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
-
-      - name: Prepare Pimod download cache for GitHub Actions caching
-        # Note: this is needed because we are caching a system directory. See
-        # https://github.com/actions/toolkit/issues/946 for details
-        run: sudo chown root /bin/tar && sudo chmod u+s /bin/tar
+          BASE_IMAGE_URL="https://downloads.raspberrypi.com/$BASE_IMAGE_REPO_GROUP/images/$BASE_IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$BASE_IMAGE_FILENAME"
+          echo "BASE_IMAGE_FILENAME=$BASE_IMAGE_FILENAME" >> $GITHUB_ENV
+          echo "BASE_IMAGE_URL=$BASE_IMAGE_URL" >> $GITHUB_ENV
 
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
-          key: base-image-${{ env.BASE_IMAGE }}
-          path: /var/cache/pimod/*
+          key: base-image-${{ env.BASE_IMAGE_URL }}
+          path: base-images/${{ env.BASE_IMAGE_FILENAME }}
 
-      - name: Prepare Pifile
+      - name: Download & decompress base image
+        id: download-base
         run: |
-          sed -i \
-            -e 's~@@BASE_IMAGE@@~${{ env.BASE_IMAGE }}~g' \
-            -e 's~@@OUTPUT_IMAGE_NAME@@~${{ env.OUTPUT_IMAGE_NAME }}~g' \
-            Pifile
+          mkdir -p base-images
+          if [ -f "base-images/${{ env.BASE_IMAGE_FILENAME }}" ]; then
+          echo "Using cached image at base-images/${{ env.BASE_IMAGE_FILENAME }}..."
+          else
+            echo "Downloading ${{ env.BASE_IMAGE_URL }} to base-images/${{ env.BASE_IMAGE_FILENAME }}..."
+            curl -o base-images/${{ env.BASE_IMAGE_FILENAME }} ${{ env.BASE_IMAGE_URL }}
+          fi
+        run: |
+          tmpfile=$(mktemp -u)
+          mime=$(file -b --mime-type "base-images/${{ env.BASE_IMAGE_FILENAME }}")
+          case "${mime}" in
+            application/octet-stream)
+              cp "${download_path}" "${tmpfile}"
+              ;;
+            application/gzip)
+            application/x-gzip)
+              gunzip -c "${download_path}" > "${tmpfile}"
+              ;;
+            application/x-xz)
+              unxz -c "${download_path}" > "${tmpfile}"
+              ;;
+            *)
+              echo -e "\033[0;31m### Error: Unknown image mimetype: ${mime}\033[0m"
+              return 1
+              ;;
+          esac
+          echo "base_image=$tmpfile" >> "$GITHUB_OUTPUT"
 
-      - name: Run Pimod
-        uses: Nature40/pimod@v0.6.0
-        with:
-          pifile: Pifile
+      - name: Mount base image
+        run: |
+          ls -l ${{ steps.download-base.outputs.base_image }}
+          # TODO: actually mount the image
 
       - name: Run pishrink
         run: |

@@ -6,13 +6,6 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 PUMP 8G
 
 INSTALL os-setup /tmp/os-setup
-RUN /bin/bash -c '\
-  apt-get install -y systemd-container && \
-  mkdir /sysroot && \
-  mount --bind / /sysroot
-  systemd-nspawn -D /sysroot --boot && \
-  umount / \
-'
 RUN su - pi -s /bin/bash -c '\
   export DEBIAN_FRONTEND=noninteractive && \
   /tmp/os-setup/setup.sh && \
