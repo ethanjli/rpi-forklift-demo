@@ -5,6 +5,11 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 
 PUMP 8G
 
+# TODO: initialize username and password
+# TODO: set locale (time zone and keyboard layout)
+
 INSTALL os-setup /tmp/os-setup
-RUN /tmp/os-setup/setup.sh
-RUN /tmp/os-setup/cleanup.sh
+RUN sudo -H -u pi bash -c '\
+  /tmp/os-setup/setup.sh && \
+  /tmp/os-setup/cleanup.sh \
+'
