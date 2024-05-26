@@ -39,32 +39,35 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Determine Raspberry Pi OS base image URL
+        id: rpi-os-image
         run: |
           case '${{ inputs.base_release_name }}' in
             'bookworm')
-              BASE_IMAGE_RELEASE_CHANNEL='raspios'
+              IMAGE_RELEASE_CHANNEL='raspios'
               ;;
             'bullseye')
-              BASE_IMAGE_RELEASE_CHANNEL='raspios_oldstable'
+              IMAGE_RELEASE_CHANNEL='raspios_oldstable'
               ;;
             *)
               echo "Unknown release name: ${{ inputs.base_release_name }}"
               exit 1
               ;;
           esac
-          BASE_IMAGE_REPO_GROUP="$BASE_IMAGE_RELEASE_CHANNEL"
+          IMAGE_REPO_GROUP="$IMAGE_RELEASE_CHANNEL"
           if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
-            BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
+            IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
           fi
-          BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.arch }}"
-          BASE_IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}-${{ inputs.arch }}"
+          IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.arch }}"
+          IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}-${{ inputs.arch }}"
           if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
-            BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
+            IMAGE_FILENAME="${IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
           fi
-          BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}.img.xz"
-          BASE_IMAGE_URL="https://downloads.raspberrypi.com/$BASE_IMAGE_REPO_GROUP/images/$BASE_IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$BASE_IMAGE_FILENAME"
-          echo "BASE_IMAGE_FILENAME=$BASE_IMAGE_FILENAME" >> $GITHUB_ENV
-          echo "BASE_IMAGE_URL=$BASE_IMAGE_URL" >> $GITHUB_ENV
+          IMAGE_FILENAME="${IMAGE_FILENAME}.img.xz"
+          IMAGE_URL="https://downloads.raspberrypi.com/$IMAGE_REPO_GROUP/images/$IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$IMAGE_FILENAME"
+          echo "RPi OS image filename: $IMAGE_FILENAME"
+          echo "image_filename=$IMAGE_FILENAME" >> $GITHUB_OUTPUT
+          echo "RPi OS image URL: $IMAGE_URL"
+          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
 
       - name: Prepare for base image caching
         run: mkdir -p .cache/base-images
@@ -72,13 +75,13 @@ jobs:
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
-          key: base-image-${{ env.BASE_IMAGE_URL }}
-          path: .cache/base-images/${{ env.BASE_IMAGE_FILENAME }}
+          key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
+          path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
 
       - name: Download & decompress base image
         id: download-base
         run: |
-          cached_download=".cache/base-images/${{ env.BASE_IMAGE_FILENAME }}"
+          cached_download=".cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}"
           if [ -f "$cached_download" ]; then
           echo "Using cached image download at $cached_download..."
           else
@@ -106,7 +109,7 @@ jobs:
               return 1
               ;;
           esac
-          echo "mountable_image=$tmpfile" >> "$GITHUB_OUTPUT"
+          echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
 
       - name: Expand & mount base image
         id: mount-base
@@ -118,14 +121,16 @@ jobs:
           sudo resize2fs "${device}p2"
           echo "Mounting $device to /mnt/build..."
           sudo mkdir -p /mnt/build
-          sudo mount "${device}p2" /mnt/build
-          sudo mount "${device}p1" /mnt/build/boot
-          echo "sysroot=/mnt/build" >> "$GITHUB_OUTPUT"
-          echo "device=$device" >> "$GITHUB_OUTPUT"
+          sudo kpartx -avs "${device}"
+          echo "sysroot=/mnt/build" >> $GITHUB_OUTPUT
+          echo "device=$device" >> $GITHUB_OUTPUT
+
+      - name: Prepare for running OS build scripts
+        run: |
+          sudo apt-get install systemd-container qemu-user-static binfmt-support
 
       - name: Run OS build scripts
         run: |
-          sudo apt-get install systemd-container qemu-user-static binfmt-support
           sudo systemd-nspawn \
             --directory ${{ steps.mount-base.outputs.sysroot }} \
             --bind "$(pwd)"/os-setup:/run/os-setup \
@@ -135,13 +140,9 @@ jobs:
       - name: Unmount base image
         run: |
           echo "Unmounting ${{ steps.mount-base.outputs.sysroot }}..."
-          while ! sudo umount ${{ steps.mount-base.outputs.sysroot }}; do
-            sleep 1
-          done
+          sudo kpartx -dvs ${{ steps.mount-base.outputs.device }}
           echo "Unmounting ${{ steps.mount-base.outputs.device }}..."
-          while ! sudo losetup -d ${{ steps.mount-base.outputs.device }}; do
-            sleep 1
-          done
+          sudo losetup -d ${{ steps.mount-base.outputs.device }}
           mv ${{ steps.download-base.outputs.mountable_image }}
 
       - name: Run pishrink
