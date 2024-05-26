@@ -26,7 +26,8 @@ on:
 jobs:
   build:
     name: Build image
-    runs-on: ubuntu-latest
+    # We need Ubuntu 24.04 to get a version of QEMU new enough to provide a RPi 4 machine type
+    runs-on: ubuntu-24.04
     env:
       OUTPUT_IMAGE_NAME: ${{ inputs.name }}-${{ inputs.base_release_name }}-${{ inputs.arch }}-${{ inputs.base_image_variant }}
     permissions:
