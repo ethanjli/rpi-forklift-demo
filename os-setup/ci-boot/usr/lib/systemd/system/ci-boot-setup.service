@@ -5,8 +5,7 @@ After=getty.target
 [Service]
 type=oneshot
 ExecStartPre=echo "Running OS setup..."
-ExecStart=/run/os-setup/ci-setup.sh
-ExecStartPost=shutdown now
+ExecStart=/usr/bin/bash -c "/run/os-setup/ci-setup.sh; shutdown now"
 StandardOutput=journal+console
 
 [Install]
