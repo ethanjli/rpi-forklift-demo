@@ -7,7 +7,9 @@ type=oneshot
 ExecStartPre=echo "Running OS setup..."
 ExecStart=su - pi bash -c '\
   export DEBIAN_FRONTEND=noninteractive; \
-  /usr/lib/os-setup/ci-setup.sh; \
+  sudo mkdir -p /var/lib/os-setup; \
+  sudo rm -f /var/lib/os-setup/success; \
+  /usr/lib/os-setup/ci-setup.sh && sudo touch /var/lib/os-setup/success; \
   journalctl --no-pager -u docker.service; \
   sudo shutdown now \
 '
