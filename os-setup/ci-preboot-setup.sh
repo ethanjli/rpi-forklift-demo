@@ -1,6 +1,10 @@
 #!/bin/bash -eux
 # This script must be run as root.
 
+build_scripts_root=$(dirname $(realpath $BASH_SOURCE))
+cp $build_scripts_root/ci-boot /
+systemctl enable ci-boot-setup.service
+
 # Change default settings for the SD card to enable headless & keyboardless first boot
 # Note: we could change the username by making a `/boot/userconf.txt` file with the new username
 # and an encrypted representation of the password (and un-disabling and unmasking

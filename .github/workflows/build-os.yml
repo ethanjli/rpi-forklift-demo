@@ -136,8 +136,6 @@ jobs:
           sudo systemd-nspawn \
             --directory ${{ steps.mount-base.outputs.sysroot }} \
             --bind "$(pwd)"/os-setup:/run/os-setup \
-            --bind "$(pwd)"/os-setup/ci-boot/usr/lib/systemd/system/ci-boot-setup.service:/usr/lib/systemd/system/ci-boot-setup.service \
-            --bind "$(pwd)"/os-setup/ci-boot/etc/systemd/system/getty.target.wants/ci-boot-setup.service:/etc/systemd/system/getty.target.wants/ci-boot-setup.service \
             --boot
           sudo systemd-nspawn \
             --directory ${{ steps.mount-base.outputs.sysroot }} \
