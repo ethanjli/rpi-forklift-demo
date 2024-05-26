@@ -9,7 +9,7 @@ ExecStartPre=echo "Running OS setup as user %I..."
 ExecStart=su - %I bash -c '\
   sudo mkdir -p /var/lib/os-setup; \
   sudo rm -f /var/lib/os-setup/success-in-vm; \
-  /usr/lib/os-setup/setup/setup-in-vm.sh && sudo touch /var/lib/os-setup/success-in-vm; \
+  ping google.com && /usr/lib/os-setup/setup/setup-in-vm.sh && sudo touch /var/lib/os-setup/success-in-vm; \
   sudo shutdown now \
 '
 StandardOutput=tty
