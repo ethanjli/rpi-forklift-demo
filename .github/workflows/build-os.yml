@@ -132,8 +132,16 @@ jobs:
           sudo systemd-nspawn \
             --directory ${{ steps.mount-base.outputs.sysroot }} \
             --bind "$(pwd)"/os-setup:/run/os-setup \
+            /usr/bin/su - pi /run/os-setup/ci-preboot-setup.sh
+          sudo systemd-nspawn \
+            --directory ${{ steps.mount-base.outputs.sysroot }} \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
             --boot
-            # run/os-setup/ci-entrypoint.sh
+            # /usr/bin/su - pi /run/os-setup/ci-setup.sh
+          sudo systemd-nspawn \
+            --directory ${{ steps.mount-base.outputs.sysroot }} \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            /usr/bin/su - pi /run/os-setup/ci-postboot-setup.sh
 
       - name: Unmount base image
         run: |

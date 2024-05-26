@@ -6,4 +6,4 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 PUMP 8G
 
 INSTALL os-setup /run/os-setup
-RUN /run/os-setup/ci-entrypoint.sh
+RUN /usr/bin/su - pi /run/os-setup/ci-setup.sh
