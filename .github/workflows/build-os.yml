@@ -121,7 +121,7 @@ jobs:
           sudo mkdir -p /mnt/build
           sudo mount "${device}p2" /mnt/build
           sudo mount "${device}p1" /mnt/build/boot
-          sudo tools/unmount-image.sh "$device" "$sysroot"
+          sudo .tools/unmount-image.sh "$device" "$sysroot"
 
       - name: Prepare for running OS build scripts
         run: |
@@ -142,7 +142,7 @@ jobs:
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-post-boot-setup.sh container
-          sudo tools/unmount-image.sh "$device" "$sysroot"
+          sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
@@ -151,19 +151,6 @@ jobs:
       # results in error "failed to start daemon: Devices cgroup isn't mounted").
       - name: Run OS build scripts in a booted VM
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/build"
-          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
-          # Note: we can't boot an RPi 4B VM yet because support was only added in QEMU 9.0.0, which
-          # is not yet provided by the ubuntu-24.04 runner!
-          echo "Preparing to boot a RPi 3B VM for remaining setup..."
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-pre-boot-setup.sh vm
-          cp -r $sysroot/boot .cache/
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-post-boot-setup.sh vm
-          sudo tools/unmount-image.sh "$device" "$sysroot"
 
       - name: Run pishrink
         run: |
