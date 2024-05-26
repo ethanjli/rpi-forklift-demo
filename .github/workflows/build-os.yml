@@ -168,6 +168,7 @@ jobs:
           MACHINE: 'raspi4b'
           RAM: 4G
           DTB: 'bcm2711-rpi-4-b.dtb'
+        uses: addnab/docker-run-action@v3
         with:
           # We run in an Arch Linux container so that we can use QEMU 9.0.0, which adds support for
           # RPi 4B emulation but is not available in the ubuntu-24.04 GitHub Actions Runner.
@@ -177,6 +178,7 @@ jobs:
           options:
             -v "${{ steps.download-base.outputs.mountable_image }}":/run/vm-sd-image.img
             -v .cache/boot:/run/vm-boot
+          --device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun  --cap-add NET_ADMIN
           run: |
             sudo pacman -S qemu-system-aarch64 qemu-user-static qemu-user-binfmt qemu-user-static-binfmt
             qemu-system-aarch64 \
