@@ -114,8 +114,8 @@ jobs:
           truncate -s 8G ${{ steps.download-base.outputs.mountable_image }}
           echo ", +" | sfdisk -N 2 ${{ steps.download-base.outputs.mountable_image }}
           device="$(sudo losetup -fP --show ${{ steps.download-base.outputs.mountable_image }})"
-          e2fsck -p -f "${device}p2"
-          resize2fs "${device}p2"
+          sudo e2fsck -p -f "${device}p2"
+          sudo resize2fs "${device}p2"
           echo "Mounting $device to /mnt/build..."
           sudo mkdir -p /mnt/build
           sudo mount "${device}p2" /mnt/build
