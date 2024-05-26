@@ -23,22 +23,19 @@ sudo ln -s "forklift-${forklift_version}" /usr/bin/forklift
 
 FORKLIFT_WORKSPACE="$HOME"
 forklift plt switch --no-cache-img $pallet_path@$pallet_version
-# Note: when running inside Pimod, Docker is not available:
-if [ -S /var/run/docker.sock ]; then
-  # Note: the pi user will only be able to run `forklift stage plan` and `forklift stage cache-img`
-  # without root permissions after a reboot, so we need `sudo -E` here; I tried running
-  # `newgrp docker` in the script to avoid the need for `sudo -E here`, but it doesn't work in the
-  # script here (even though it works after the script finishes, before rebooting):
-  sudo -E forklift stage plan
-  sudo -E forklift stage cache-img
-  next_pallet="$(basename $(forklift stage locate-bun next))"
-  # Applying the staged pallet (i.e. making Docker instantiate all the containers) significantly
-  # decreases first-boot time, by up to 30 sec for github.com/PlanktoScope/pallet-standard.
-  if ! sudo -E forklift stage apply; then
-    echo "Warning: the next staged pallet could not be successfully applied. We'll try again on the next boot, since the pallet might require some files which will only be created during the next boot."
-    # Reset the "apply-failed" status of the staged pallet to apply:
-    forklift stage set-next --no-cache-img "$next_pallet"
-  fi
+# Note: the pi user will only be able to run `forklift stage plan` and `forklift stage cache-img`
+# without root permissions after a reboot, so we need `sudo -E` here; I tried running
+# `newgrp docker` in the script to avoid the need for `sudo -E here`, but it doesn't work in the
+# script here (even though it works after the script finishes, before rebooting):
+sudo -E forklift stage plan
+sudo -E forklift stage cache-img
+next_pallet="$(basename $(forklift stage locate-bun next))"
+# Applying the staged pallet (i.e. making Docker instantiate all the containers) significantly
+# decreases first-boot time, by up to 30 sec for github.com/PlanktoScope/pallet-standard.
+if ! sudo -E forklift stage apply; then
+  echo "Warning: the next staged pallet could not be successfully applied. We'll try again on the next boot, since the pallet might require some files which will only be created during the next boot."
+  # Reset the "apply-failed" status of the staged pallet to apply:
+  forklift stage set-next --no-cache-img "$next_pallet"
 fi
 
 # Prepare most of the necessary systemd units:
@@ -58,7 +55,4 @@ sudo systemctl preset \
 # current (i.e. default) user's default Forklift workspace:
 sudo mkdir -p /var/lib/forklift
 sudo mv $FORKLIFT_WORKSPACE/.local/share/forklift/stages /var/lib/forklift/stages
-# Note: when running inside Pimod, the systemd bus is not available:
-if ! sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service" --now; then
-  sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service"
-fi
+sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service" --now
