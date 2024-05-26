@@ -85,8 +85,8 @@ jobs:
           if [ -f "$cached_download" ]; then
           echo "Using cached image download at $cached_download..."
           else
-            echo "Downloading ${{ env.BASE_IMAGE_URL }} to $cached_download..."
-            curl -o "$cached_download" "${{ env.BASE_IMAGE_URL }}"
+            echo "Downloading ${{ steps.rpi-os-image.outputs.image_url }} to $cached_download..."
+            curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
           fi
 
           tmpfile="$(mktemp -u)"
