@@ -17,4 +17,8 @@ export LANG="en_US.UTF-8"
 sudo update-locale LANG="$LANG"
 
 # Set the timezone to UTC
-sudo timedatectl set-timezone UTC
+# If systemd is not running (e.g. when setup scripts are run in Pimod), we can't use `timedatectl`:
+if ! sudo timedatectl set-timezone UTC; then
+  sudo rm /etc/localtime
+  sudo ln -s /usr/share/zoneinfo/UTC /etc/localtime
+fi
