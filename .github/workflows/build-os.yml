@@ -68,7 +68,7 @@ jobs:
       - name: Prepare Pimod download cache for GitHub Actions caching
         # Note: this is needed because we are caching a system directory. See
         # https://github.com/actions/toolkit/issues/946 for details
-        run: sudo chown root /bin/bar && sudo chmod u+s /bin/tar
+        run: sudo chown root /bin/tar && sudo chmod u+s /bin/tar
 
       - name: Set up base image caching
         uses: actions/cache@v4
