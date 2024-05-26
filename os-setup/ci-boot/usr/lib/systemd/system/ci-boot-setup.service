@@ -6,8 +6,9 @@ After=getty.target
 type=oneshot
 ExecStartPre=echo "Running OS setup..."
 ExecStart=su - pi bash -c '\
-  DEBIAN_FRONTEND=noninteractive /run/os-setup/ci-setup.sh; \
-  systemctl status docker.service; \
+  export DEBIAN_FRONTEND=noninteractive; \
+  /run/os-setup/ci-setup.sh; \
+  journalctl --no-pager -u docker.service; \
   sudo shutdown now \
 '
 StandardOutput=tty
