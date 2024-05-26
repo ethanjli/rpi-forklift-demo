@@ -39,6 +39,78 @@ jobs:
       - name: Checkout Push to Registry action
         uses: actions/checkout@v4
 
+      # TODO: build and publish arm64 vm kernels for QEMU `virt` machines in a separate repo
+      # (see https://lca-kernel.ozlabs.org/2022-Currey-Abusing-GitHub-Actions-for-building-and-testing-kernels.pdf)
+      # Trigger it with a workflow dispatch, providing the kernel version to build. Uploaded
+      # artifacts (and uploads for release) should include .config, logs, and the kernel image.
+      - name: Build or use arm64 VM kernel
+        id: vm-kernel
+        env:
+          KERNEL_VERSION: 6.6.32
+        run: |
+          cached_kernel=".cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img"
+          if [ -f "$cached_kernel" ]; then
+            echo "Using cached image kernel at $cached_kernel..."
+          else
+            # From https://gist.github.com/cGandom/23764ad5517c8ec1d7cd904b923ad863
+            echo "Compiling kernel ${{ env.KERNEL_VERSION }} to $cached_kernel..."
+            sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            kernel_dir="linux-${{ env.KERNEL_VERSION }}"
+            echo "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz"
+            curl -s -L "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz" | \
+              tar -xJf -
+            export ARCH=arm64
+            export CROSS_COMPILE=/bin/aarch64-linux-gnu-
+            make -C "$kernel_dir" defconfig # make a .config file
+            make -C "$kernel_dir" nopm.config
+            make -C "$kernel_dir" virt.config
+            make -C "$kernel_dir" kvm_guest.config
+            sed -i \
+              -e 's~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g' \
+              -e 's~^CONFIG_ACPI_(.*)=.*~# CONFIG_ACPI_\1 is not set~g' \
+              -e 's~^CONFIG_BPF=.*~# CONFIG_BPF is not set~g' \
+              -e 's~^CONFIG_BT=.*~# CONFIG_BT is not set~g' \
+              -e 's~^CONFIG_WIRELESS=.*~# CONFIG_WIRELESS is not set~g' \
+              -e 's~^CONFIG_HAVE_PCI=.*~# CONFIG_HAVE_PCI is not set~g' \
+              -e 's~^CONFIG_PCI=.*~# CONFIG_PCI is not set~g' \
+              -e 's~^CONFIG_PCI_(.*)=.*~# CONFIG_PCI_\1 is not set~g' \
+              -e 's~^CONFIG_NVME_CORE=.*~# CONFIG_NVME_CORE is not set~g' \
+              -e 's~^CONFIG_(.*)_NVME=.*~# CONFIG_\1_NVME is not set~g' \
+              -e 's~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g' \
+              -e 's~^CONFIG_PHYLINK=.*~# CONFIG_PHYLINK is not set~g' \
+              -e 's~^CONFIG_PHYLIB=.*~# CONFIG_PHYLIB is not set~g' \
+              -e 's~^CONFIG_SWPHY=.*~# CONFIG_SWPHY is not set~g' \
+              -e 's~^CONFIG_FIXED_PHY=.*~# CONFIG_FIXED_PHY is not set~g' \
+              -e 's~^CONFIG_USB_NET_DRIVERS=.*~# CONFIG_USB_NET_DRIVERS is not set~g' \
+              -e 's~^CONFIG_WLAN=.*~# CONFIG_WLAN is not set~g' \
+              -e 's~^CONFIG_INPUT=.*~# CONFIG_INPUT is not set~g' \
+              -e 's~^CONFIG_INPUT_(.*)=.*~# CONFIG_INPUT_\1 is not set~g' \
+              -e 's~^CONFIG_MOUSE_(.*)=.*~# CONFIG_MOUSE_\1 set~g' \
+              -e 's~^CONFIG_MEDIA_(.*)=.*~# CONFIG_MEDIA_\1 is not set~g' \
+              -e 's~^CONFIG_MEDIA_SUPPORT=.*~# CONFIG_MEDIA_SUPPORT is not set~g' \
+              -e 's~^CONFIG_THERMAL=.*~# CONFIG_THERMAL is not set~g' \
+              -e 's~^CONFIG_THERMAL_(.*)=.*~# CONFIG_THERMAL_\1 is not set~g' \
+              -e 's~^CONFIG_DRM=.*~# CONFIG_DRM is not set~g' \
+              -e 's~^CONFIG_DRM_(.*)=.*~# CONFIG_DRM_\1 is not set~g' \
+              -e 's~^CONFIG_FB=.*~# CONFIG_FB is not set~g' \
+              -e 's~^CONFIG_SOUND=.*~# CONFIG_SOUND is not set~g' \
+              -e 's~^CONFIG_SND=.*~# CONFIG_SND is not set~g' \
+              -e 's~^CONFIG_SND_PCI=.*~# CONFIG_SND_PCI is not set~g' \
+              -e 's~^CONFIG_SND_USB=.*~# CONFIG_SND_USB is not set~g' \
+              -e 's~^CONFIG_HID=.*~# CONFIG_HID is not set~g' \
+              -e 's~^CONFIG_HID_(.*)=.*~# CONFIG_HID_\1 is not set~g' \
+              -e 's~^CONFIG_BTRFS_FS=.*~# CONFIG_BTRFS_FS is not set~g' \
+              -e 's~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g' \
+              -e 's~^CONFIG_NETWORK_FILESYSTEMS=.*~# CONFIG_NETWORK_FILESYSTEMS is not set~g' \
+              -e 's~^CONFIG_NFS_FS=.*~# CONFIG_NFS_FS is not set~g' \
+              -e 's~^CONFIG_NFS_(.*)=.*~# CONFIG_NFS_\1 is not set~g' \
+              "$kernel_dir/.config"
+            make -C "$kernel_dir" -j8 # build the kernel
+            mkdir -p .cache/vm-kernels/
+            cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
+          fi
+          echo "kernel_image=$cached_kernel" >> $GITHUB_OUTPUT
+
       - name: Determine Raspberry Pi OS base image URL
         id: rpi-os-image
         run: |
@@ -164,68 +236,6 @@ jobs:
         with:
           key: kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}
           path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
-
-      # TODO: build and publish arm64 vm kernels for QEMU `virt` machines in a separate repo
-      # (see https://lca-kernel.ozlabs.org/2022-Currey-Abusing-GitHub-Actions-for-building-and-testing-kernels.pdf)
-      # Trigger it with a workflow dispatch, providing the kernel version to build. Uploaded
-      # artifacts (and uploads for release) should include .config, logs, and the kernel image.
-      - name: Build or use arm64 VM kernel
-        id: vm-kernel
-        env:
-          KERNEL_VERSION: 6.6.32
-        run: |
-          cached_kernel=".cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img"
-          if [ -f "$cached_kernel" ]; then
-            echo "Using cached image kernel at $cached_kernel..."
-          else
-            # From https://gist.github.com/cGandom/23764ad5517c8ec1d7cd904b923ad863
-            echo "Compiling kernel ${{ env.KERNEL_VERSION }} to $cached_kernel..."
-            sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-            kernel_dir="linux-${{ env.KERNEL_VERSION }}"
-            echo "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz"
-            curl -s -L "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz" | \
-              tar -xJf -
-            export ARCH=arm64
-            export CROSS_COMPILE=/bin/aarch64-linux-gnu-
-            make -C "$kernel_dir" defconfig # make a .config file
-            make -C "$kernel_dir" nopm.config
-            make -C "$kernel_dir" virt.config
-            make -C "$kernel_dir" kvm_guest.config
-            sed -i \
-              -e "s~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g" \
-              -e "s~^CONFIG_BPF=.*~# CONFIG_BPF is not set~g" \
-              -e "s~^CONFIG_BT=.*~# CONFIG_BT is not set~g" \
-              -e "s~^CONFIG_WIRELESS=.*~# CONFIG_WIRELESS is not set~g" \
-              -e "s~^CONFIG_HAVE_PCI=.*~# CONFIG_HAVE_PCI is not set~g" \
-              -e "s~^CONFIG_PCI=.*~# CONFIG_PCI is not set~g" \
-              -e "s~^CONFIG_NVME_CORE=.*~# CONFIG_NVME_CORE is not set~g" \
-              -e "s~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g" \
-              -e "s~^CONFIG_PHYLINK=.*~# CONFIG_PHYLINK is not set~g" \
-              -e "s~^CONFIG_PHYLIB=.*~# CONFIG_PHYLIB is not set~g" \
-              -e "s~^CONFIG_SWPHY=.*~# CONFIG_SWPHY is not set~g" \
-              -e "s~^CONFIG_FIXED_PHY=.*~# CONFIG_FIXED_PHY is not set~g" \
-              -e "s~^CONFIG_USB_NET_DRIVERS=.*~# CONFIG_USB_NET_DRIVERS is not set~g" \
-              -e "s~^CONFIG_WLAN=.*~# CONFIG_WLAN is not set~g" \
-              -e "s~^CONFIG_INPUT=.*~# CONFIG_INPUT is not set~g" \
-              -e "s~^CONFIG_MEDIA_SUPPORT=.*~# CONFIG_MEDIA_SUPPORT is not set~g" \
-              -e "s~^CONFIG_THERMAL=.*~# CONFIG_THERMAL is not set~g" \
-              -e "s~^CONFIG_DRM=.*~# CONFIG_DRM is not set~g" \
-              -e "s~^CONFIG_FB=.*~# CONFIG_FB is not set~g" \
-              -e "s~^CONFIG_SOUND=.*~# CONFIG_SOUND is not set~g" \
-              -e "s~^CONFIG_SND=.*~# CONFIG_SND is not set~g" \
-              -e "s~^CONFIG_SND_PCI=.*~# CONFIG_SND_PCI is not set~g" \
-              -e "s~^CONFIG_SND_USB=.*~# CONFIG_SND_USB is not set~g" \
-              -e "s~^CONFIG_HID=.*~# CONFIG_HID is not set~g" \
-              -e "s~^CONFIG_BTRFS_FS=.*~# CONFIG_BTRFS_FS is not set~g" \
-              -e "s~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g" \
-              -e "s~^CONFIG_NETWORK_FILESYSTEMS=.*~# CONFIG_NETWORK_FILESYSTEMS is not set~g" \
-              -e "s~^CONFIG_NFS_FS=.*~# CONFIG_NFS_FS is not set~g" \
-              "$kernel_dir/.config"
-            make -C "$kernel_dir" -j8 # build the kernel
-            mkdir -p .cache/vm-kernels/
-            cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
-          fi
-          echo "kernel_image=$cached_kernel" >> $GITHUB_OUTPUT
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
