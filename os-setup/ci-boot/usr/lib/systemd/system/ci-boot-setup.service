@@ -8,8 +8,7 @@ type=oneshot
 ExecStartPre=echo "Running OS setup..."
 ExecStart=/run/os-setup/ci-setup.sh
 ExecStartPost=shutdown now
-StandardOutput=tty
-TTYPath=/dev/tty1
+StandardOutput=journal+console
 
 [Install]
 WantedBy=multi-user.target
