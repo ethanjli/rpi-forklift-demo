@@ -69,9 +69,6 @@ jobs:
           echo "RPi OS image URL: $IMAGE_URL"
           echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
 
-      - name: Prepare for base image caching
-        run: mkdir -p .cache/base-images
-
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
