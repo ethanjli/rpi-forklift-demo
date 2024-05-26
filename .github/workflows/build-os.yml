@@ -194,19 +194,44 @@ jobs:
             make -C "$kernel_dir" -j8 # build the kernel
             mkdir -p .cache/vm-kernels/
             sed -i \
+              -e "s~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g" \
+              -e "s~^CONFIG_ACPI_(.*)=.*~# CONFIG_ACPI_\\1 is not set~g" \
+              -e "s~^CONFIG_BPF=.*~# CONFIG_BPF is not set~g" \
               -e "s~^CONFIG_BT=.*~# CONFIG_BT is not set~g" \
               -e "s~^CONFIG_WIRELESS=.*~# CONFIG_WIRELESS is not set~g" \
+              -e "s~^CONFIG_HAVE_PCI=.*~# CONFIG_HAVE_PCI is not set~g" \
               -e "s~^CONFIG_PCI=.*~# CONFIG_PCI is not set~g" \
+              -e "s~^CONFIG_PCI_(.*)=.*~# CONFIG_PCI_\\1 is not set~g" \
+              -e "s~^CONFIG_NVME_CORE=.*~# CONFIG_NVME_CORE is not set~g" \
+              -e "s~^CONFIG_(.*)_NVME=.*~# CONFIG_\\1_NVME is not set~g" \
               -e "s~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g" \
+              -e "s~^CONFIG_PHYLINK=.*~# CONFIG_PHYLINK is not set~g" \
+              -e "s~^CONFIG_PHYLIB=.*~# CONFIG_PHYLIB is not set~g" \
+              -e "s~^CONFIG_SWPHY=.*~# CONFIG_SWPHY is not set~g" \
+              -e "s~^CONFIG_FIXED_PHY=.*~# CONFIG_FIXED_PHY is not set~g" \
               -e "s~^CONFIG_USB_NET_DRIVERS=.*~# CONFIG_USB_NET_DRIVERS is not set~g" \
               -e "s~^CONFIG_WLAN=.*~# CONFIG_WLAN is not set~g" \
               -e "s~^CONFIG_INPUT=.*~# CONFIG_INPUT is not set~g" \
+              -e "s~^CONFIG_INPUT_(.*)=.*~# CONFIG_INPUT_\\1 is not set~g" \
+              -e "s~^CONFIG_MOUSE_(.*)=.*~# CONFIG_MOUSE_\\1 set~g" \
+              -e "s~^CONFIG_MEDIA_(.*)=.*~# CONFIG_MEDIA_\\1 is not set~g" \
               -e "s~^CONFIG_MEDIA_SUPPORT=.*~# CONFIG_MEDIA_SUPPORT is not set~g" \
+              -e "s~^CONFIG_THERMAL=.*~# CONFIG_THERMAL is not set~g" \
+              -e "s~^CONFIG_THERMAL_(.*)=.*~# CONFIG_THERMAL_\\1 is not set~g" \
               -e "s~^CONFIG_DRM=.*~# CONFIG_DRM is not set~g" \
+              -e "s~^CONFIG_DRM_(.*)=.*~# CONFIG_DRM_\\1 is not set~g" \
+              -e "s~^CONFIG_FB=.*~# CONFIG_FB is not set~g" \
               -e "s~^CONFIG_SOUND=.*~# CONFIG_SOUND is not set~g" \
+              -e "s~^CONFIG_SND=.*~# CONFIG_SND is not set~g" \
+              -e "s~^CONFIG_SND_PCI=.*~# CONFIG_SND_PCI is not set~g" \
+              -e "s~^CONFIG_SND_USB=.*~# CONFIG_SND_USB is not set~g" \
               -e "s~^CONFIG_HID=.*~# CONFIG_HID is not set~g" \
+              -e "s~^CONFIG_HID_(.*)=.*~# CONFIG_HID_\\1 is not set~g" \
               -e "s~^CONFIG_BTRFS_FS=.*~# CONFIG_BTRFS_FS is not set~g" \
               -e "s~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g" \
+              -e "s~^CONFIG_NETWORK_FILESYSTEMS=.*~# CONFIG_NETWORK_FILESYSTEMS is not set~g" \
+              -e "s~^CONFIG_NFS_FS=.*~# CONFIG_NFS_FS is not set~g" \
+              -e "s~^CONFIG_NFS_(.*)=.*~# CONFIG_NFS_\\1 is not set~g" \
               "$kernel_dir/.config"
             cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
           fi
@@ -238,7 +263,8 @@ jobs:
             -device virtio-blk,drive=hd0,bootindex=0 \
             -netdev user,id=net0,hostfwd=tcp::2222-:22 \
             -device virtio-net-pci,netdev=net0 \
-            -monitor telnet:127.0.0.1:5555,server,nowait
+            -monitor telnet:127.0.0.1:5555,server,nowait \
+            -append "root=/dev/vda2"
 
       - name: Clean up after VM boot
         run: |
