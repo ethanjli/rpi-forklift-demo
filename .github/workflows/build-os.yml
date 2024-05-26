@@ -128,7 +128,7 @@ jobs:
           sudo apt-get install systemd-container qemu-user-static binfmt-support
           sudo systemd-nspawn \
             --directory=${{ steps.mount-base.outputs.sysroot }} \
-            --bind=os-setup:/run/os-setup
+            --bind=./os-setup:/run/os-setup
             /run/os-setup/ci-entrypoint.sh
             # --boot
 
