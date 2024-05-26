@@ -145,7 +145,6 @@ jobs:
           sudo umount ${{ steps.mount-base.outputs.sysroot }}
           echo "Unmounting ${{ steps.mount-base.outputs.device }}..."
           sudo losetup -d ${{ steps.mount-base.outputs.device }}
-          mv ${{ steps.download-base.outputs.mountable_image }} ${{ env.OUTPUT_IMAGE_NAME }}.img
 
       - name: Run pishrink
         run: |
