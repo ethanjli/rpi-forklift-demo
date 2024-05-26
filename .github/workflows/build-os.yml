@@ -209,7 +209,6 @@ jobs:
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/phy/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/pinctrl/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/platform/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/pmdomain/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/reset/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/scsi/Kconfig"
             sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/soc/Kconfig"
