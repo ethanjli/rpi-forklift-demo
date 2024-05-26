@@ -2,7 +2,8 @@
 # This script must be run as root.
 
 build_scripts_root=$(dirname $(realpath $BASH_SOURCE))
-cp $build_scripts_root/ci-boot /
+cp -r $build_scripts_root/ci-boot/* /
+ls /
 systemctl enable ci-boot-setup.service
 
 # Change default settings for the SD card to enable headless & keyboardless first boot
