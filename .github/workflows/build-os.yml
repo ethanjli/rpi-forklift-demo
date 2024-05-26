@@ -133,6 +133,8 @@ jobs:
       # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
+        # TODO: remove this (it's just temporarily here for troubleshooting
+        if: ${{ false }}
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot="/mnt/build"
@@ -187,7 +189,7 @@ jobs:
               -dtb /run/vm-boot/${{ env.DTB }} -kernel /run/vm-boot/kernel8.img \
               -m ${{ env.RAM }} -smp 4 \
               -drive file=/run/vm-sd-image.img,if=sd,format=raw,index=0,media=disk \
-              -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
+              -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk1p2 rootdelay=1" \
               -netdev user,id=net0 -device usb-net,netdev=net0
 
       - name: Clean up after VM boot
