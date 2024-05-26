@@ -5,14 +5,14 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 
 PUMP 8G
 
-# TODO: initialize username and password
+# TODO: initialize password
 # TODO: set locale (time zone and keyboard layout)
 
 ENV DEBIAN_FRONTEND noninteractive
 
 INSTALL os-setup /tmp/os-setup
 RUN su - pi -s /bin/bash -c '\
-  echo $HOME && \
+  echo $DEBIAN_FRONTEND && \
   /tmp/os-setup/setup.sh && \
   /tmp/os-setup/cleanup.sh \
 '
