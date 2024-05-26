@@ -1,7 +1,6 @@
 [Unit]
 Description=Perform OS setup during first boot
 After=getty.service
-After=multi-user.target
 
 [Service]
 type=oneshot
@@ -11,4 +10,4 @@ ExecStartPost=shutdown now
 StandardOutput=journal+console
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=getty.service
