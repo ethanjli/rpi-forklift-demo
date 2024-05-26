@@ -76,6 +76,8 @@ jobs:
           key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
           path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
 
+      # TODO: split this off into a GitHub Action, with a parameterized cache path and better
+      # handling of different archive formats
       - name: Download & decompress base image
         id: download-base
         run: |
@@ -109,6 +111,7 @@ jobs:
           esac
           echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
 
+      # TODO: split this off into a piresize action
       - name: Expand & mount base image
         id: mount-base
         run: |
@@ -118,10 +121,10 @@ jobs:
           device="$(sudo losetup -fP --show $image)"
           sudo e2fsck -p -f "${device}p2"
           sudo resize2fs "${device}p2"
-          echo "Mounting $device to /mnt/build..."
-          sudo mkdir -p /mnt/build
-          sudo mount "${device}p2" /mnt/build
-          sudo mount "${device}p1" /mnt/build/boot
+          echo "Mounting $device to /mnt/img-build..."
+          sudo mkdir -p /mnt/img-build
+          sudo mount "${device}p2" /mnt/img-build
+          sudo mount "${device}p1" /mnt/img-build/boot
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       - name: Prepare for running OS build scripts
@@ -135,7 +138,7 @@ jobs:
       - name: Run OS build scripts in an unbooted container
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/build"
+          sysroot="/mnt/img-build"
           device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
           echo "Booting a systemd-nspawn container for most of the setup..."
           sudo systemd-nspawn --directory $sysroot \
@@ -147,7 +150,7 @@ jobs:
         id: prepare-vm
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/build"
+          sysroot="/mnt/img-build"
           device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
@@ -162,6 +165,7 @@ jobs:
           key: kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}
           path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
 
+      # TODO: build and publish arm64 vm kernels for QEMU `virt` machines in a separate repo
       - name: Build or use arm64 VM kernel
         id: vm-kernel
         env:
@@ -175,8 +179,9 @@ jobs:
             echo "Compiling kernel ${{ env.KERNEL_VERSION }} to $cached_kernel..."
             sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
             kernel_dir="linux-${{ env.KERNEL_VERSION }}"
+            echo "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz"
             curl -s -L "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz" | \
-              tar xvJf - -C "$kernel_dir"
+              tar -xJf -
             export ARCH=arm64
             export CROSS_COMPILE=/bin/aarch64-linux-gnu-
             make -C "$kernel_dir" defconfig # make a .config file
@@ -216,7 +221,7 @@ jobs:
       - name: Clean up after VM boot
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/build"
+          sysroot="/mnt/img-build"
           device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
@@ -226,6 +231,7 @@ jobs:
             /run/os-setup/ci-pre-headless-boot.sh
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
+      # TODO: split this off into a piresize action
       - name: Run pishrink
         run: |
           wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
