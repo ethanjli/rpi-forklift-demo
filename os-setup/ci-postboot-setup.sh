@@ -3,7 +3,7 @@
 
 if [ ! -f /var/lib/os-setup/success ]; then
   echo "Error: the OS setup scripts did not complete successfully during the previous boot!"
-  return 1
+  exit 1
 fi
 
 rm -rf /usr/lib/os-setup

@@ -128,6 +128,8 @@ jobs:
         run: |
           sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
 
+      # TODO: for performance reasons, try to run most setup in a systemd-nspawn container, and only
+      # run things interacting with Docker in a QEMU VM
       - name: Run OS build scripts
         run: |
           sysroot="${{ steps.mount-base.outputs.sysroot }}"
@@ -155,7 +157,7 @@ jobs:
             -m 1G -smp 4 \
             -drive file=$image,if=sd,format=raw,index=0,media=disk \
             -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
-            -device usb-net,netdev=net0 -netdev user,id=net0,hostfwd=tcp::2222-:22
+            -device usb-net,netdev=net0 -netdev user,id=net0
 
           echo "Cleaning up VM boot files..."
           device="$(sudo losetup -fP --show $image)"
