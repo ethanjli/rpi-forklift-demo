@@ -6,7 +6,10 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 PUMP 8G
 
 INSTALL os-setup /tmp/os-setup
-RUN systemd-nspawn -D / --boot
+RUN /bin/bash -c '\
+  apt-get install -y systemd-container && \
+  systemd-nspawn -D / --boot \
+'
 RUN su - pi -s /bin/bash -c '\
   export DEBIAN_FRONTEND=noninteractive && \
   /tmp/os-setup/setup.sh && \
