@@ -76,28 +76,29 @@ jobs:
         id: download-base
         run: |
           mkdir -p base-images
-          if [ -f "base-images/${{ env.BASE_IMAGE_FILENAME }}" ]; then
-          echo "Using cached image at base-images/${{ env.BASE_IMAGE_FILENAME }}..."
+          cached_download="base-images/${{ env.BASE_IMAGE_FILENAME }}"
+          if [ -f "$cached_download" ]; then
+          echo "Using cached image download at $cached_download..."
           else
-            echo "Downloading ${{ env.BASE_IMAGE_URL }} to base-images/${{ env.BASE_IMAGE_FILENAME }}..."
-            curl -o base-images/${{ env.BASE_IMAGE_FILENAME }} ${{ env.BASE_IMAGE_URL }}
+            echo "Downloading ${{ env.BASE_IMAGE_URL }} to $cached_download..."
+            curl -o "$cached_download" "${{ env.BASE_IMAGE_URL }}"
           fi
-        run: |
+
           tmpfile=$(mktemp -u)
-          mime=$(file -b --mime-type "base-images/${{ env.BASE_IMAGE_FILENAME }}")
-          case "${mime}" in
+          mime=$(file -b --mime-type "$cached_download")
+          case "$mime" in
             application/octet-stream)
-              cp "${download_path}" "${tmpfile}"
+              cp "$cached_download" "${tmpfile}"
               ;;
             application/gzip)
             application/x-gzip)
-              gunzip -c "${download_path}" > "${tmpfile}"
+              gunzip -c "$cached_download" > "$tmpfile"
               ;;
             application/x-xz)
-              unxz -c "${download_path}" > "${tmpfile}"
+              unxz -c "$cached_download" > "$tmpfile"
               ;;
             *)
-              echo -e "\033[0;31m### Error: Unknown image mimetype: ${mime}\033[0m"
+              echo -e "\033[0;31m### Error: Unknown image mimetype: $mime\033[0m"
               return 1
               ;;
           esac
