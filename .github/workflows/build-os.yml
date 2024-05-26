@@ -70,13 +70,13 @@ jobs:
         uses: actions/cache@v4
         with:
           key: base-image-${{ env.BASE_IMAGE_URL }}
-          path: base-images/${{ env.BASE_IMAGE_FILENAME }}
+          path: ~/.cache/base-images/${{ env.BASE_IMAGE_FILENAME }}
 
       - name: Download & decompress base image
         id: download-base
         run: |
-          mkdir -p base-images
-          cached_download="base-images/${{ env.BASE_IMAGE_FILENAME }}"
+          mkdir -p ~/.cache/base-images
+          cached_download="~/.cache/base-images/${{ env.BASE_IMAGE_FILENAME }}"
           if [ -f "$cached_download" ]; then
           echo "Using cached image download at $cached_download..."
           else
@@ -88,12 +88,15 @@ jobs:
           mime="$(file -b --mime-type "$cached_download")"
           case "$mime" in
             application/octet-stream)
-              cp "$cached_download" "${tmpfile}"
+              echo "Copying $cached_download to $tmpfile..."
+              cp "$cached_download" "$tmpfile"
               ;;
             application/gzip | application/x-gzip)
+              echo "Extracting $cached_download to $tmpfile..."
               gunzip -c "$cached_download" > "$tmpfile"
               ;;
             application/x-xz)
+              echo "Extracting $cached_download to $tmpfile..."
               unxz -c "$cached_download" > "$tmpfile"
               ;;
             *)
@@ -105,7 +108,6 @@ jobs:
 
       - name: Mount base image
         run: |
-          ls -l ${{ steps.download-base.outputs.base_image }}
           # TODO: actually mount the image
 
       - name: Run pishrink
