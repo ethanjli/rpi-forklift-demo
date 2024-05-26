@@ -121,7 +121,7 @@ jobs:
           sudo mkdir -p /mnt/build
           sudo mount "${device}p2" /mnt/build
           sudo mount "${device}p1" /mnt/build/boot
-          sudo .tools/unmount-image.sh "$device" "$sysroot"
+          sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       - name: Prepare for running OS build scripts
         run: |
