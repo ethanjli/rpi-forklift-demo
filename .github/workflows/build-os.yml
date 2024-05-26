@@ -166,6 +166,8 @@ jobs:
           path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
 
       # TODO: build and publish arm64 vm kernels for QEMU `virt` machines in a separate repo
+      # (see https://lca-kernel.ozlabs.org/2022-Currey-Abusing-GitHub-Actions-for-building-and-testing-kernels.pdf)
+      # Trigger it with a workflow dispatch, providing the kernel version to build
       - name: Build or use arm64 VM kernel
         id: vm-kernel
         env:
@@ -187,6 +189,7 @@ jobs:
             make -C "$kernel_dir" defconfig # make a .config file
             make -C "$kernel_dir" kvm_guest.config # use the kvm_guest config as the base defconfig
             make -C "$kernel_dir" -j8 # build the kernel
+            mkdir -p .cache/vm-kernels/
             cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
           fi
           echo "kernel_image=$cached_kernel" >> $GITHUB_OUTPUT
@@ -204,12 +207,13 @@ jobs:
           # e.g. with addnab/docker-run-action@v3) and doesn't seem to support the `usb-net` network
           # device type, and definitely doesn't support PCI or Ethernet.
           MACHINE: 'virt'
+          CPU: max
           RAM: 4G
           FS_IMAGE: ${{ steps.download-base.outputs.mountable_image }}
         run: |
           # From https://gist.github.com/cGandom/23764ad5517c8ec1d7cd904b923ad863
           qemu-system-aarch64 \
-            -machine ${{ env.MACHINE }} -cpu cortex-a72 -nographic \
+            -machine ${{ env.MACHINE }} -cpu ${{ env.CPU }} -nographic \
             -smp 4 -m ${{ env.RAM }} \
             -kernel ${{ steps.vm-kernel.outputs.kernel_image }} \
             -drive file=${{ env.FS_IMAGE }},if=none,id=hd0,format=raw,index=0,cache=writeback \
