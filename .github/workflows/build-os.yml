@@ -144,13 +144,31 @@ jobs:
             /run/os-setup/ci-post-boot-setup.sh container
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
-      # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
-      # `docker.service` can't start properly in the container due to its interaction with
-      # the kernel (in bullseye Docker's use of iptables/nftables results in error
-      # "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of cgroups
-      # results in error "failed to start daemon: Devices cgroup isn't mounted").
       - name: Run OS build scripts in a booted VM
           image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot="/mnt/build"
+          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
+          # Note: we can't boot an RPi 4B VM yet because support was only added in QEMU 9.0.0, which
+          # is not yet provided by the ubuntu-24.04 runner!
+          echo "Preparing to boot a RPi 3B VM for remaining setup..."
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            /run/os-setup/ci-pre-boot-setup.sh vm
+          cp -r $sysroot/boot .cache/
+          sudo ./tools/unmount-image.sh "$device" "$sysroot"
+          qemu-system-aarch64 \
+            -machine raspi3b -cpu cortex-a72 -nographic \
+            -dtb .cache/boot/bcm2710-rpi-3-b.dtb -kernel .cache/boot/kernel8.img \
+            -m 1G -smp 4 \
+            -drive file=$image,if=sd,format=raw,index=0,media=disk \
+            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
+            -device usb-net,netdev=net0 -netdev user,id=net0
+
+          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            /run/os-setup/ci-post-boot-setup.sh vm
+          sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       - name: Run pishrink
         run: |
