@@ -147,6 +147,7 @@ jobs:
           # "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of cgroups
           # results in error "failed to start daemon: Devices cgroup isn't mounted").
           image="${{ steps.download-base.outputs.mountable_image }}"
+          qemu-system-aarch64 -machine help
           qemu-system-aarch64 \
             -machine raspi4b -cpu cortex-a72 -nographic \
             -dtb .cache/boot/bcm2711-rpi-4-b.dtb -kernel .cache/boot/kernel8.img \
