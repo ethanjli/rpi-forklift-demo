@@ -11,7 +11,7 @@ PUMP 8G
 ENV DEBIAN_FRONTEND noninteractive
 
 INSTALL os-setup /tmp/os-setup
-RUN su - pi -s bash -c '\
+RUN su - pi -s /bin/bash -c '\
   echo $HOME && \
   /tmp/os-setup/setup.sh && \
   /tmp/os-setup/cleanup.sh \
