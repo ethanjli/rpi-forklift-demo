@@ -106,11 +106,20 @@ jobs:
               return 1
               ;;
           esac
-          echo "base_image=$tmpfile" >> "$GITHUB_OUTPUT"
+          echo "mountable_image=$tmpfile" >> "$GITHUB_OUTPUT"
 
       - name: Mount base image
         run: |
-          # TODO: actually mount the image
+          device="$(sudo losetup -fP --show ${{ steps.download-base.outputs.mountable_image }})"
+          echo "Mounting $device to /mnt/build..."
+          sudo mkdir -p /mnt/build
+          sudo mount "${device}p2" /mnt/build
+          sudo mount "${device}p1" /mnt/build/boot
+
+      - name: Run OS build scripts
+        run: |
+          sudo apt-get install systemd-container qemu-user-static binfmt-support
+          systemd-nspawn -D /mnt/build --boot
 
       - name: Run pishrink
         run: |
