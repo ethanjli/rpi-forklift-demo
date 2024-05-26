@@ -190,6 +190,32 @@ jobs:
             make -C "$kernel_dir" nopm.config
             make -C "$kernel_dir" virt.config
             make -C "$kernel_dir" kvm_guest.config
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/crypto/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/gpu/drm/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/hid/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/hwmon/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/hwtracing/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/i2c/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/iio/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/input/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/interconnect/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/media/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/can/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/dsa/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/ethernet/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/wireless/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/nfc/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/pci/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/phy/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/pinctrl/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/platform/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/pmdomain/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/reset/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/scsi/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/soc/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/thermal/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/usb/Kconfig"
+            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/vdpa/Kconfig"
             make -C "$kernel_dir" -j8 # build the kernel
             mkdir -p .cache/vm-kernels/
             cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
@@ -218,7 +244,7 @@ jobs:
             -machine ${{ env.MACHINE }} -cpu ${{ env.CPU }} -nographic \
             -smp 4 -m ${{ env.RAM }} \
             -kernel ${{ steps.vm-kernel.outputs.kernel_image }} \
-            -drive file=${{ env.FS_IMAGE }},if=none,id=hd0,format=raw,index=0,cache=writeback \
+            -drive file=${{ env.FS_IMAGE }},if=none,id=hd0,format=raw,cache=writeback \
             -device virtio-blk,drive=hd0,bootindex=0 \
             -netdev user,id=net0,hostfwd=tcp::2222-:22 \
             -device virtio-net-pci,netdev=net0 \
