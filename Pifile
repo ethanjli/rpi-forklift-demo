@@ -8,8 +8,11 @@ PUMP 8G
 # TODO: initialize username and password
 # TODO: set locale (time zone and keyboard layout)
 
+ENV DEBIAN_FRONTEND noninteractive
+
 INSTALL os-setup /tmp/os-setup
-RUN sudo -H -u pi bash -c '\
+RUN su - pi -s bash -c '\
+  echo $HOME && \
   /tmp/os-setup/setup.sh && \
   /tmp/os-setup/cleanup.sh \
 '
