@@ -126,7 +126,7 @@ jobs:
 
       - name: Prepare for running OS build scripts
         run: |
-          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
+          sudo apt-get install systemd-container qemu-user-static binfmt-support
 
       # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
       # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
@@ -143,18 +143,7 @@ jobs:
             su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
-      # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
-      # `docker.service` can't start properly in the container due to its interaction with
-      # the kernel (in bullseye Docker's use of iptables/nftables results in error
-      # "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of cgroups
-      # results in error "failed to start daemon: Devices cgroup isn't mounted").
-      - name: Run OS build scripts in a booted VM
-        env:
-          # TODO: Work around incompatibility with bookworm base images
-          # (see https://forums.raspberrypi.com/viewtopic.php?t=361643)
-          MACHINE: 'raspi3b'
-          RAM: 1G # raspi3b doesn't allow more than 1G
-          DTB: ${{ inputs.base_release_name == 'bookworm' && 'bcm2710-rpi-3-b-plus.dtb' || 'bcm2710-rpi-3-b-plus.dtb' }}
+      - name: Prepare to run remaining OS build scripts in a booted VM
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot="/mnt/build"
@@ -166,15 +155,42 @@ jobs:
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           cp -r $sysroot/boot .cache/
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
-          echo "Booting a ${{ env.MACHINE }} VM for remaining setup..."
-          qemu-system-aarch64 \
-            -machine ${{ env.MACHINE }} -cpu cortex-a72 -nographic \
-            -dtb .cache/boot/${{ env.DTB }} -kernel .cache/boot/kernel8.img \
-            -m ${{ env.RAM }} -smp 4 \
-            -drive file=$image,if=sd,format=raw,index=0,media=disk \
-            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
-            -netdev user,id=net0 -device usb-net,netdev=net0
-          echo "The ${{ env.MACHINE }} VM has finished!"
+
+      # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
+      # `docker.service` can't start properly in the container due to its interaction with
+      # the kernel (in bullseye Docker's use of iptables/nftables results in error
+      # "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of cgroups
+      # results in error "failed to start daemon: Devices cgroup isn't mounted").
+      - name: Run OS build scripts in a booted VM
+        env:
+          # TODO: Work around incompatibility with bookworm base images
+          # (see https://forums.raspberrypi.com/viewtopic.php?t=361643)
+          MACHINE: 'raspi4b'
+          RAM: 4G
+          DTB: 'bcm2711-rpi-4-b.dtb'
+        with:
+          # We run in an Arch Linux container so that we can use QEMU 9.0.0, which adds support for
+          # RPi 4B emulation but is not available in the ubuntu-24.04 GitHub Actions Runner.
+          # RPi 3B(+) emulation does not work with Raspberry Pi Bookworm
+          # (see https://github.com/lukechilds/dockerpi/issues/64).
+          image: archlinux:base-20240101.0.204074
+          options:
+            -v "${{ steps.download-base.outputs.mountable_image }}":/run/vm-sd-image.img
+            -v .cache/boot:/run/vm-boot
+          run: |
+            sudo pacman -S qemu-system-aarch64 qemu-user-static qemu-user-binfmt qemu-user-static-binfmt
+            qemu-system-aarch64 \
+              -machine ${{ env.MACHINE }} -cpu cortex-a72 -nographic \
+              -dtb /run/vm-boot/${{ env.DTB }} -kernel /run/vm-boot/kernel8.img \
+              -m ${{ env.RAM }} -smp 4 \
+              -drive file=/run/vm-sd-image.img,if=sd,format=raw,index=0,media=disk \
+              -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
+              -netdev user,id=net0 -device usb-net,netdev=net0
+
+      - name: Clean up after VM boot
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot="/mnt/build"
           device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
