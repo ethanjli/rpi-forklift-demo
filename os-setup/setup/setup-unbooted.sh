@@ -1,5 +1,5 @@
 #!/bin/bash -eu
-# This script runs setup steps which can run in a booted container (e.g. in in a systemd-nspawn
+# This script runs setup steps which can run in an unbooted container (e.g. in a systemd-nspawn
 # container, for example) for performance reasons, and which don't need to run in a booted VM.
 
 # Determine the base path for sub-scripts

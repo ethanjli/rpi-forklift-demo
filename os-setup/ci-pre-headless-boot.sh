@@ -1,17 +1,6 @@
 #!/bin/bash -eux
 # This script must be run as root.
 
-boot_type="$1" # container or vm
-
-build_scripts_root=$(dirname $(realpath $BASH_SOURCE))
-cp -r $build_scripts_root/ci-boot/* /
-systemctl enable boot-setup@$boot_type.service
-# Don't make a login prompt on the main tty where setup script output will be shown:
-systemctl disable getty@tty1.service
-
-# Persist the setup scripts for boot, since it's not as simple to mount them into a QEMU VM
-cp -r $build_scripts_root /usr/lib/os-setup
-
 # Change default settings for the SD card to enable headless & keyboardless first boot
 # Note: we could change the username by making a `/boot/userconf.txt` file with the new username
 # and an encrypted representation of the password (and un-disabling and unmasking
@@ -25,3 +14,8 @@ cp -r $build_scripts_root /usr/lib/os-setup
 echo "pi:copepode" | chpasswd
 sed -i -e "s~^XKBLAYOUT=.*~XKBLAYOUT=\"us\"~" /etc/default/keyboard
 systemctl disable userconfig.service
+
+# This is needed to have the login prompt on tty1 (so that a user with a keyboard can log in
+# without switching away from the default tty), because we disabled userconfig.service. See
+# https://forums.raspberrypi.com/viewtopic.php?p=2032694#p2032694
+systemctl enable getty@tty1
