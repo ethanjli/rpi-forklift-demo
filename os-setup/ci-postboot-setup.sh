@@ -1,6 +1,8 @@
 #!/bin/bash -eux
 # This script must be run as root.
 
+rm -rf /usr/lib/os-setup
+
 systemctl disable ci-boot-setup.service
 rm /usr/lib/systemd/system/ci-boot-setup.service
 
