@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OUTPUT_IMAGE_NAME: ${{ inputs.name }}-${{ inputs.base_release_name }}-${{ inputs.arch }}-${{ inputs.base_image_variant }}
+      SETUP_USER: pi
     permissions:
       contents: read
       packages: write
@@ -139,7 +140,7 @@ jobs:
           echo "Booting a systemd-nspawn container for most of the setup..."
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/setup/setup-unbooted.sh
+            su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
@@ -162,7 +163,7 @@ jobs:
           # is not yet provided by the ubuntu-24.04 runner!
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-pre-vm-boot.sh
+            /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           cp -r $sysroot/boot .cache/
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
           echo "Booting a ${{ env.MACHINE }} VM for remaining setup..."
@@ -177,7 +178,7 @@ jobs:
           device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-post-vm-boot.sh
+            /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-headless-boot.sh

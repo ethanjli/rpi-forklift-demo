@@ -29,9 +29,13 @@ sudo systemctl preset \
   overlay-etc.service \
   start-overlaid-units.service
 
-# Make the stage store at /var/lib/forklift/stages available for non-root access in the
-# current (i.e. default) user's default Forklift workspace:
-mkdir -p $HOME/.local/share/forklift/stages
-sudo mkdir -p /var/lib/forklift
-sudo mv $HOME/.local/share/forklift/stages /var/lib/forklift/stages
-sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service" --now
+# Make the stage store at /var/lib/forklift/stages available for non-root access in the current
+# (i.e. default) user's default Forklift workspace, both in the current boot and subsequent boots:
+local_stage_store="$HOME/.local/share/forklift/stages"
+mkdir -p "$local_stage_store"
+sudo mkdir -p /var/lib/forklift/stages
+sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service"
+mkdir -p "$local_stage_store"
+mount_uid="$(stat -c "%u "$local_stage_store")"
+mount_gid="$(stat -c "%g "$local_stage_store")"
+mount -o bind,uid=$mount_uid,gid=$mount_gid /var/lib/forklift/stages "$local_stage_store"
