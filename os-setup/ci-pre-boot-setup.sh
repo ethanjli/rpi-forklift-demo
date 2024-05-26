@@ -1,9 +1,16 @@
 #!/bin/bash -eux
 # This script must be run as root.
 
+boot_type="$1" # container or vm
+
 build_scripts_root=$(dirname $(realpath $BASH_SOURCE))
 cp -r $build_scripts_root/ci-boot/* /
-systemctl enable ci-boot-setup.service
+systemctl enable boot-setup@$boot_type.service
+# Don't make a login prompt on the main tty where setup script output will be shown:
+systemctl disable getty@tty1.service
+
+# Persist the setup scripts for boot, since it's not as simple to mount them into a QEMU VM
+cp -r $build_scripts_root /usr/lib/os-setup
 
 # Change default settings for the SD card to enable headless & keyboardless first boot
 # Note: we could change the username by making a `/boot/userconf.txt` file with the new username
@@ -18,6 +25,3 @@ systemctl enable ci-boot-setup.service
 echo "pi:copepode" | chpasswd
 sed -i -e "s~^XKBLAYOUT=.*~XKBLAYOUT=\"us\"~" /etc/default/keyboard
 systemctl disable userconfig.service
-
-# Persist the setup scripts for boot, since it's not as simple to mount them into a QEMU VM
-cp -r $build_scripts_root /usr/lib/os-setup

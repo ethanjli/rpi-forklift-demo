@@ -1,4 +1,6 @@
 #!/bin/bash -eu
+# This script runs setup steps which require a fully-booted operating system to work (so they
+# won't work in a systemd-nspawn container, for example)
 
 # Determine the base path for sub-scripts
 
@@ -28,26 +30,9 @@ function panic {
 
 # Run sub-scripts
 
-description="install base tools"
-report_starting "$description"
-if $build_scripts_root/tools/install.sh ; then
-  report_finished "$description"
-else
-  panic "$description"
-fi
-
-description="configure system locales"
-report_starting "$description"
-if $build_scripts_root/localization/config.sh ; then
-  source $build_scripts_root/localization/export-env.sh
-  report_finished "$description"
-else
-  panic "$description"
-fi
-
 description="set up OS configuration with Forklift"
 report_starting "$description"
-if $build_scripts_root/forklift/install.sh ; then
+if $build_scripts_root/forklift-pallet/install.sh ; then
   report_finished "$description"
 else
   panic "$description"

@@ -1,0 +1,18 @@
+[Unit]
+Description=Perform OS setup (in booted %I)
+After=getty.target
+
+[Service]
+type=oneshot
+ExecStartPre=echo "Running OS setup (in booted %I)..."
+ExecStart=su - pi bash -c '\
+  export DEBIAN_FRONTEND=noninteractive; \
+  sudo mkdir -p /var/lib/os-setup; \
+  sudo rm -f /var/lib/os-setup/success-%I; \
+  /usr/lib/os-setup/setup/setup-in-%I.sh && sudo touch /var/lib/os-setup/success-%I; \
+  sudo shutdown now \
+'
+StandardOutput=tty
+
+[Install]
+WantedBy=getty.target
