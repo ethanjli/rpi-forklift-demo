@@ -134,8 +134,14 @@ jobs:
 
       - name: Unmount base image
         run: |
-          sudo umount ${{ steps.mount-base.outputs.sysroot }}
-          sudo losetup -d ${{ steps.mount-base.outputs.device }}
+          echo "Unmounting ${{ steps.mount-base.outputs.sysroot }}..."
+          while ! sudo umount ${{ steps.mount-base.outputs.sysroot }}; do
+            sleep 1
+          done
+          echo "Unmounting ${{ steps.mount-base.outputs.device }}..."
+          while ! sudo losetup -d ${{ steps.mount-base.outputs.device }}; do
+            sleep 1
+          done
           mv ${{ steps.download-base.outputs.mountable_image }}
 
       - name: Run pishrink

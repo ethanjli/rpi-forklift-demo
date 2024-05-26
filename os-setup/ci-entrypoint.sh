@@ -1,7 +1,4 @@
 #!/bin/bash -eu
 
-/usr/bin/su - pi -s /usr/bin/bash -c '\
-  export DEBIAN_FRONTEND=noninteractive && \
-  /run/os-setup/setup.sh && \
-  /run/os-setup/cleanup.sh \
-'
+build_scripts_root=$(dirname $(realpath $BASH_SOURCE))
+/usr/bin/su - pi "$build_scripts_root/ci-setup.sh"
