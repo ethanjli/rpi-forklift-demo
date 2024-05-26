@@ -187,8 +187,7 @@ jobs:
               tar -xJf -
             export ARCH=arm64
             export CROSS_COMPILE=/bin/aarch64-linux-gnu-
-            make -C "$kernel_dir" allnoconfig
-            #make -C "$kernel_dir" defconfig
+            make -C "$kernel_dir" defconfig
             make -C "$kernel_dir" nopm.config
             make -C "$kernel_dir" virt.config
             make -C "$kernel_dir" kvm_guest.config
