@@ -5,11 +5,11 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 
 PUMP 8G
 
-INSTALL os-setup /tmp/os-setup
-RUN su - pi -s /bin/bash -c '\
+INSTALL os-setup /run/os-setup
+RUN su - pi -s /usr/bin/bash -c '\
   export DEBIAN_FRONTEND=noninteractive && \
-  /tmp/os-setup/setup.sh && \
-  /tmp/os-setup/cleanup.sh \
+  /run/os-setup/setup.sh && \
+  /run/os-setup/cleanup.sh \
 '
 
 # Change default settings for the SD card to enable headless & keyboardless first boot

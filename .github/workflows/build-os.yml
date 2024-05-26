@@ -108,24 +108,43 @@ jobs:
           esac
           echo "mountable_image=$tmpfile" >> "$GITHUB_OUTPUT"
 
-      - name: Mount base image
+      - name: Expand & mount base image
+        id: mount-base
         run: |
+          truncate -s 8G ${{ steps.download-base.outputs.mountable_image }}
+          echo ", +" | sfdisk -N 2 ${{ steps.download-base.outputs.mountable_image }}
           device="$(sudo losetup -fP --show ${{ steps.download-base.outputs.mountable_image }})"
+          e2fsck -f "${device}p2"
+          resize2fs "${device}p2"
           echo "Mounting $device to /mnt/build..."
           sudo mkdir -p /mnt/build
           sudo mount "${device}p2" /mnt/build
           sudo mount "${device}p1" /mnt/build/boot
+          echo "sysroot=/mnt/build" >> "$GITHUB_OUTPUT"
+          echo "device=$device" >> "$GITHUB_OUTPUT"
 
       - name: Run OS build scripts
         run: |
           sudo apt-get install systemd-container qemu-user-static binfmt-support
-          systemd-nspawn -D /mnt/build --boot
+          sudo systemd-nspawn \
+            --directory=${{ steps.mount-base.outputs.sysroot }} \
+            --bind=os-setup:/run/os-setup
+            /run/os-setup/ci-entrypoint.sh
+            # --boot
+
+      - name: Unmount base image
+        run: |
+          sudo umount ${{ steps.mount-base.outputs.sysroot }}
+          sudo losetup -d ${{ steps.mount-base.outputs.device }}
+          mv ${{ steps.download-base.outputs.mountable_image }}
 
       - name: Run pishrink
         run: |
           wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
           chmod a+x pishrink.sh
-          sudo ./pishrink.sh -za ${{ env.OUTPUT_IMAGE_NAME }}.img
+          sudo ./pishrink.sh -za \
+            ${{ steps.download-base.outputs.mountable_image }} \
+            ${{ env.OUTPUT_IMAGE_NAME }}.img
 
       - name: Upload image to Job Artifacts
         uses: actions/upload-artifact@v4
