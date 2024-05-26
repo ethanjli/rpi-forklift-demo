@@ -166,7 +166,7 @@ jobs:
           # TODO: Work around incompatibility with bookworm base images
           # (see https://forums.raspberrypi.com/viewtopic.php?t=361643)
           MACHINE: 'raspi4b'
-          RAM: 4G
+          RAM: 2G # 2 GB of RAM is the required value for the 4B
           DTB: 'bcm2711-rpi-4-b.dtb'
         uses: addnab/docker-run-action@v3
         with:
