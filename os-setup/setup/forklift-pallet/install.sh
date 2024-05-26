@@ -10,7 +10,6 @@ config_files_root=$(dirname $(realpath $BASH_SOURCE))
 pallet_path="github.com/ethanjli/pallet-example-minimal"
 pallet_version="f2ea1b4"
 
-FORKLIFT_WORKSPACE="$HOME"
 forklift plt switch --no-cache-img $pallet_path@$pallet_version
 # Note: the pi user will only be able to run `forklift stage plan` and `forklift stage cache-img`
 # without root permissions after a reboot, so we need `sudo -E` here; I tried running
