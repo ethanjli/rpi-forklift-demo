@@ -36,6 +36,6 @@ mkdir -p "$local_stage_store"
 sudo mkdir -p /var/lib/forklift/stages
 sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service"
 mkdir -p "$local_stage_store"
-mount_uid="$(stat -c "%u "$local_stage_store")"
-mount_gid="$(stat -c "%g "$local_stage_store")"
+mount_uid="$(stat -c %u "$local_stage_store")"
+mount_gid="$(stat -c %g "$local_stage_store")"
 mount -o bind,uid=$mount_uid,gid=$mount_gid /var/lib/forklift/stages "$local_stage_store"
