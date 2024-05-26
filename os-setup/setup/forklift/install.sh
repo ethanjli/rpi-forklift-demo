@@ -32,4 +32,6 @@ sudo systemctl preset \
 # Make the stage store at /var/lib/forklift/stages available for non-root access in the
 # current (i.e. default) user's default Forklift workspace:
 mkdir -p $HOME/.local/share/forklift/stages
+sudo mkdir -p /var/lib/forklift
+sudo mv $HOME/.local/share/forklift/stages /var/lib/forklift/stages
 sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service" --now
