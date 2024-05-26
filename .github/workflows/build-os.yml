@@ -66,17 +66,19 @@ jobs:
           echo "BASE_IMAGE_FILENAME=$BASE_IMAGE_FILENAME" >> $GITHUB_ENV
           echo "BASE_IMAGE_URL=$BASE_IMAGE_URL" >> $GITHUB_ENV
 
+      - name: Prepare for base image caching
+        run: mkdir -p .cache/base-images
+
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
           key: base-image-${{ env.BASE_IMAGE_URL }}
-          path: ~/.cache/base-images/${{ env.BASE_IMAGE_FILENAME }}
+          path: .cache/base-images/${{ env.BASE_IMAGE_FILENAME }}
 
       - name: Download & decompress base image
         id: download-base
         run: |
-          mkdir -p ~/.cache/base-images
-          cached_download="~/.cache/base-images/${{ env.BASE_IMAGE_FILENAME }}"
+          cached_download=".cache/base-images/${{ env.BASE_IMAGE_FILENAME }}"
           if [ -f "$cached_download" ]; then
           echo "Using cached image download at $cached_download..."
           else
