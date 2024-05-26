@@ -66,13 +66,15 @@ jobs:
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
       - name: Prepare Pimod download cache for GitHub Actions caching
-        run: sudo mkdir -p /var/cache/pimod
+        # Note: this is needed because we are caching a system directory. See
+        # https://github.com/actions/toolkit/issues/946 for details
+        run: sudo chown root /bin/bar && sudo chmod u+s /bin/tar
 
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
           key: base-image-${{ env.BASE_IMAGE }}
-          path: /var/cache/pimod
+          path: /var/cache/pimod/*
 
       - name: Prepare Pifile
         run: |
