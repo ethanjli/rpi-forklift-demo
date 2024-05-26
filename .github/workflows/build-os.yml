@@ -181,7 +181,7 @@ jobs:
             --device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun  --cap-add NET_ADMIN
           run: |
             pacman -Sy
-            pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
+            yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
             qemu-system-aarch64 \
               -machine ${{ env.MACHINE }} -cpu cortex-a72 -nographic \
               -dtb /run/vm-boot/${{ env.DTB }} -kernel /run/vm-boot/kernel8.img \
