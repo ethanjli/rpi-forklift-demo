@@ -153,7 +153,7 @@ jobs:
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
-          cp -r $sysroot/boot .cache/
+          sudo cp -r $sysroot/boot /run/vm-boot
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
@@ -176,8 +176,8 @@ jobs:
           # (see https://github.com/lukechilds/dockerpi/issues/64).
           image: archlinux:base-20240101.0.204074
           options:
-            -v "${{ steps.download-base.outputs.mountable_image }}":/run/vm-sd-image.img
-            -v .cache/boot:/run/vm-boot
+            -v ${{ steps.download-base.outputs.mountable_image }}:/run/vm-sd-image.img
+            -v /run/vm-boot:/run/vm-boot
             --device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun  --cap-add NET_ADMIN
           run: |
             sudo pacman -S qemu-system-aarch64 qemu-user-static qemu-user-binfmt qemu-user-static-binfmt
