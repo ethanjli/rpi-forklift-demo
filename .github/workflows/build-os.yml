@@ -132,7 +132,9 @@ jobs:
         run: |
           sysroot="${{ steps.mount-base.outputs.sysroot }}"
           device="${{ steps.mount-base.outputs.device }}"
-          echo "Preparing to boot a RPi 4 VM..."
+          # Note: we can't boot an RPi 4B VM yet because support was only added in QEMU 9.0.0, which
+          # is not yet provided by the ubuntu-24.04 runner!
+          echo "Preparing to boot a RPi 3B VM..."
           sudo systemd-nspawn \
             --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
@@ -147,14 +149,9 @@ jobs:
           # "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of cgroups
           # results in error "failed to start daemon: Devices cgroup isn't mounted").
           image="${{ steps.download-base.outputs.mountable_image }}"
-          docker run -it --rm \
-            -e "RAM_SIZE=4G" -e "CPU_CORES=4" -e "ARGUMENTS='-machine help'" \
-            --device=/dev/kvm --cap-add NET_ADMIN \
-            qemux/qemu-arm
-          qemu-system-aarch64 -machine help
           qemu-system-aarch64 \
-            -machine raspi4b -cpu cortex-a72 -nographic \
-            -dtb .cache/boot/bcm2711-rpi-4-b.dtb -kernel .cache/boot/kernel8.img \
+            -machine raspi3b -cpu cortex-a72 -nographic \
+            -dtb .cache/boot/bcm2710-rpi-3-b.dtb -kernel .cache/boot/kernel8.img \
             -m 4G -smp 4 \
             -sd $image \
             -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
