@@ -167,7 +167,8 @@ jobs:
 
       # TODO: build and publish arm64 vm kernels for QEMU `virt` machines in a separate repo
       # (see https://lca-kernel.ozlabs.org/2022-Currey-Abusing-GitHub-Actions-for-building-and-testing-kernels.pdf)
-      # Trigger it with a workflow dispatch, providing the kernel version to build
+      # Trigger it with a workflow dispatch, providing the kernel version to build. Uploaded
+      # artifacts (and uploads for release) should include .config, logs, and the kernel image.
       - name: Build or use arm64 VM kernel
         id: vm-kernel
         env:
@@ -186,36 +187,27 @@ jobs:
               tar -xJf -
             export ARCH=arm64
             export CROSS_COMPILE=/bin/aarch64-linux-gnu-
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/crypto/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/gpu/drm/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/hid/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/hwmon/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/hwtracing/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/i2c/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/iio/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/input/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/interconnect/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/media/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/can/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/dsa/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/ethernet/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/net/wireless/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/nfc/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/pci/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/phy/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/pinctrl/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/platform/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/reset/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/scsi/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/soc/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/thermal/Kconfig"
-            sed -i -e "s~^source~# source~g" "$kernel_dir/drivers/vdpa/Kconfig"
             make -C "$kernel_dir" defconfig # make a .config file
             make -C "$kernel_dir" nopm.config
             make -C "$kernel_dir" virt.config
             make -C "$kernel_dir" kvm_guest.config
             make -C "$kernel_dir" -j8 # build the kernel
             mkdir -p .cache/vm-kernels/
+            sed -i \
+              -e "s~^CONFIG_BT=.*~# CONFIG_BT is not set~g" \
+              -e "s~^CONFIG_WIRELESS=.*~# CONFIG_WIRELESS is not set~g" \
+              -e "s~^CONFIG_PCI=.*~# CONFIG_PCI is not set~g" \
+              -e "s~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g" \
+              -e "s~^CONFIG_USB_NET_DRIVERS=.*~# CONFIG_USB_NET_DRIVERS is not set~g" \
+              -e "s~^CONFIG_WLAN=.*~# CONFIG_WLAN is not set~g" \
+              -e "s~^CONFIG_INPUT=.*~# CONFIG_INPUT is not set~g" \
+              -e "s~^CONFIG_MEDIA_SUPPORT=.*~# CONFIG_MEDIA_SUPPORT is not set~g" \
+              -e "s~^CONFIG_DRM=.*~# CONFIG_DRM is not set~g" \
+              -e "s~^CONFIG_SOUND=.*~# CONFIG_SOUND is not set~g" \
+              -e "s~^CONFIG_HID=.*~# CONFIG_HID is not set~g" \
+              -e "s~^CONFIG_BTRFS_FS=.*~# CONFIG_BTRFS_FS is not set~g" \
+              -e "s~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g" \
+              "$kernel_dir/.config"
             cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
           fi
           echo "kernel_image=$cached_kernel" >> $GITHUB_OUTPUT
