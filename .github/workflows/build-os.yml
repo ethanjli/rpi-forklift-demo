@@ -153,8 +153,9 @@ jobs:
             -machine raspi3b -cpu cortex-a72 -nographic \
             -dtb .cache/boot/bcm2710-rpi-3-b.dtb -kernel .cache/boot/kernel8.img \
             -m 1G -smp 4 \
-            -drive file=$image,format=raw,index=0,media=disk \
-            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
+            -drive file=$image,if=sd,format=raw,index=0,media=disk \
+            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
+            -device usb-net,netdev=net0
 
           echo "Cleaning up VM boot files..."
           device="$(sudo losetup -fP --show $image)"
