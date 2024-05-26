@@ -8,7 +8,10 @@ PUMP 8G
 INSTALL os-setup /tmp/os-setup
 RUN /bin/bash -c '\
   apt-get install -y systemd-container && \
-  systemd-nspawn -D / --boot \
+  mkdir /sysroot && \
+  mount --bind / /sysroot
+  systemd-nspawn -D /sysroot --boot && \
+  umount / \
 '
 RUN su - pi -s /bin/bash -c '\
   export DEBIAN_FRONTEND=noninteractive && \
