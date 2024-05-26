@@ -9,14 +9,14 @@ en_US.UTF-8 UTF-8
 EOT
 sudo dpkg-reconfigure --frontend=noninteractive locales
 
-# Update the default locales so that the base-locale is en_US.UTF-8.
+# Change the default locales so that the base-locale is en_US.UTF-8.
 # FIXME: https://wiki.debian.org/Locale#Standard recommends that instead we should actually set the
 # default locale to "None" - so that users who access the system over SSH can set their own locale
 # using the LANG environment variable. We can do this with the command `sudo update-locale --reset`.
 export LANG="en_US.UTF-8"
 sudo update-locale LANG="$LANG"
 
-# Set the timezone to UTC
+# Change the timezone to UTC
 # If systemd is not running (e.g. when setup scripts are run in Pimod), we can't use `timedatectl`:
 if ! sudo timedatectl set-timezone UTC; then
   sudo rm /etc/localtime

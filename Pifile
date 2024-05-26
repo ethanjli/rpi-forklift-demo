@@ -6,7 +6,16 @@ TO @@OUTPUT_IMAGE_NAME@@.img
 PUMP 8G
 
 # Change default settings for the SD card to enable headless & keyboardless first boot
-RUN /bin/bash -c 'echo "pi:copepode" | chpasswd'
+# Note: we could change the username by making a `/boot/userconf.txt` file with the new username
+# and an encrypted representation of the password, but we don't need to do that for now.
+# See https://github.com/RPi-Distro/userconf-pi/blob/bookworm/userconf-service and
+# https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-a-user
+RUN /bin/bash -c '\
+  echo "pi:copepode" | chpasswd && \
+  sed -i -e "s~^XKBLAYOUT=.*~XKBLAYOUT=\"us\"~" /etc/default/keyboard && \
+  systemctl disable userconfig && \
+  systemctl mask userconfig \
+'
 
 INSTALL os-setup /tmp/os-setup
 RUN su - pi -s /bin/bash -c '\
