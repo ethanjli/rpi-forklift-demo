@@ -3,8 +3,8 @@
 # Run setup scripts
 export DEBIAN_FRONTEND=noninteractive
 build_scripts_root=$(dirname $(realpath $BASH_SOURCE))
-$build_scripts_root/setup.sh
-$build_scripts_root/cleanup.sh
+$build_scripts_root/setup/setup.sh
+$build_scripts_root/setup/cleanup.sh
 
 # Change default settings for the SD card to enable headless & keyboardless first boot
 # Note: we could change the username by making a `/boot/userconf.txt` file with the new username
