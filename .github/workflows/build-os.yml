@@ -157,7 +157,7 @@ jobs:
       - name: Set up arm64 VM kernel caching
         uses: actions/cache@v4
         env:
-          KERNEL_VERSION=6.6.32
+          KERNEL_VERSION: 6.6.32
         with:
           key: kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}
           path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
@@ -165,7 +165,7 @@ jobs:
       - name: Build or use arm64 VM kernel
         id: vm-kernel
         env:
-          KERNEL_VERSION=6.6.32
+          KERNEL_VERSION: 6.6.32
         run: |
           cached_kernel=".cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img"
           if [ -f "$cached_kernel" ]; then
@@ -174,12 +174,15 @@ jobs:
             # From https://gist.github.com/cGandom/23764ad5517c8ec1d7cd904b923ad863
             echo "Compiling kernel ${{ env.KERNEL_VERSION }} to $cached_kernel..."
             sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            kernel_dir="linux-${{ env.KERNEL_VERSION }}"
+            curl -s -L "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz" | \
+              tar xvJf - -C "$kernel_dir"
             export ARCH=arm64
             export CROSS_COMPILE=/bin/aarch64-linux-gnu-
-            make defconfig # make a .config file
-            make kvm_gues.config # use the kvm_guest config as the base defconfig for qemu
-            make -j8 # build the kernel
-            cp arch/arm64/boot/Image "$cached_kernel"
+            make -C "$kernel_dir" defconfig # make a .config file
+            make -C "$kernel_dir" kvm_guest.config # use the kvm_guest config as the base defconfig
+            make -C "$kernel_dir" -j8 # build the kernel
+            cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
           fi
           echo "kernel_image=$cached_kernel" >> $GITHUB_OUTPUT
 
