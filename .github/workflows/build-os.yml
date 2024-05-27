@@ -204,7 +204,7 @@ jobs:
           sudo losetup -d "$device"
 
       - name: Shrink the OS image
-        uses: ethanjli/pishrink-action@v0.1.0
+        uses: ethanjli/pishrink-action@v0.1.1
         with:
           image: ${{ steps.download-base.outputs.mountable_image }}
           destination: ${{ env.OUTPUT_IMAGE_NAME }}.img
