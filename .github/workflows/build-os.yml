@@ -39,6 +39,101 @@ jobs:
       - name: Checkout Push to Registry action
         uses: actions/checkout@v4
 
+      - name: Set up base image caching
+        uses: actions/cache@v4
+        with:
+          key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
+          path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
+
+      # TODO: split this off into a GitHub Action, with a parameterized cache path and better
+      # handling of different archive formats
+      - name: Download & decompress base image
+        id: download-base
+        run: |
+          cached_download=".cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}"
+          if [ -f "$cached_download" ]; then
+          echo "Using cached image download at $cached_download..."
+          else
+            echo "Downloading ${{ steps.rpi-os-image.outputs.image_url }} to $cached_download..."
+            curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
+          fi
+
+          tmpfile="$(mktemp -u)"
+          mime="$(file -b --mime-type "$cached_download")"
+          case "$mime" in
+            application/octet-stream)
+              echo "Copying $cached_download to $tmpfile..."
+              cp "$cached_download" "$tmpfile"
+              ;;
+            application/gzip | application/x-gzip)
+              echo "Extracting $cached_download to $tmpfile..."
+              gunzip -c "$cached_download" > "$tmpfile"
+              ;;
+            application/x-xz)
+              echo "Extracting $cached_download to $tmpfile..."
+              unxz -c "$cached_download" > "$tmpfile"
+              ;;
+            *)
+              echo -e "\033[0;31m### Error: Unknown image mimetype: $mime\033[0m"
+              return 1
+              ;;
+          esac
+          echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
+
+      # TODO: split this off into a piresize action
+      - name: Expand & mount base image
+        id: mount-base
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          truncate -s 8G $image
+          echo ", +" | sfdisk -N 2 $image
+          device="$(sudo losetup -fP --show $image)"
+          sudo e2fsck -p -f "${device}p2"
+          sudo resize2fs "${device}p2"
+          echo "Mounting $device to /mnt/img-build..."
+          sudo mkdir -p /mnt/img-build
+          sudo mount "${device}p2" /mnt/img-build
+          sudo mount "${device}p1" /mnt/img-build/boot
+          sudo ./tools/unmount-image.sh "$device" "$sysroot"
+
+      - name: Prepare for running OS build scripts
+        run: |
+          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
+
+      # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
+      # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
+      # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
+      # with a "Transport endpoint is not connected" error)
+      - name: Run OS build scripts in an unbooted container
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot="/mnt/img-build"
+          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
+          echo "Booting a systemd-nspawn container for most of the setup..."
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
+          sudo ./tools/unmount-image.sh "$device" "$sysroot"
+
+      - name: Prepare to run remaining OS build scripts in a booted VM
+        id: prepare-vm
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot="/mnt/img-build"
+          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
+          sudo ./tools/unmount-image.sh "$device" "$sysroot"
+
+      - name: Set up arm64 VM kernel caching
+        uses: actions/cache@v4
+        env:
+          KERNEL_VERSION: 6.6.32
+        with:
+          key: kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}
+          path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
+
       # TODO: build and publish arm64 vm kernels for QEMU `virt` machines in a separate repo
       # (see https://lca-kernel.ozlabs.org/2022-Currey-Abusing-GitHub-Actions-for-building-and-testing-kernels.pdf)
       # Trigger it with a workflow dispatch, providing the kernel version to build. Uploaded
@@ -146,101 +241,6 @@ jobs:
           echo "image_filename=$IMAGE_FILENAME" >> $GITHUB_OUTPUT
           echo "RPi OS image URL: $IMAGE_URL"
           echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
-
-      - name: Set up base image caching
-        uses: actions/cache@v4
-        with:
-          key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
-          path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
-
-      # TODO: split this off into a GitHub Action, with a parameterized cache path and better
-      # handling of different archive formats
-      - name: Download & decompress base image
-        id: download-base
-        run: |
-          cached_download=".cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}"
-          if [ -f "$cached_download" ]; then
-          echo "Using cached image download at $cached_download..."
-          else
-            echo "Downloading ${{ steps.rpi-os-image.outputs.image_url }} to $cached_download..."
-            curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
-          fi
-
-          tmpfile="$(mktemp -u)"
-          mime="$(file -b --mime-type "$cached_download")"
-          case "$mime" in
-            application/octet-stream)
-              echo "Copying $cached_download to $tmpfile..."
-              cp "$cached_download" "$tmpfile"
-              ;;
-            application/gzip | application/x-gzip)
-              echo "Extracting $cached_download to $tmpfile..."
-              gunzip -c "$cached_download" > "$tmpfile"
-              ;;
-            application/x-xz)
-              echo "Extracting $cached_download to $tmpfile..."
-              unxz -c "$cached_download" > "$tmpfile"
-              ;;
-            *)
-              echo -e "\033[0;31m### Error: Unknown image mimetype: $mime\033[0m"
-              return 1
-              ;;
-          esac
-          echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
-
-      # TODO: split this off into a piresize action
-      - name: Expand & mount base image
-        id: mount-base
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          truncate -s 8G $image
-          echo ", +" | sfdisk -N 2 $image
-          device="$(sudo losetup -fP --show $image)"
-          sudo e2fsck -p -f "${device}p2"
-          sudo resize2fs "${device}p2"
-          echo "Mounting $device to /mnt/img-build..."
-          sudo mkdir -p /mnt/img-build
-          sudo mount "${device}p2" /mnt/img-build
-          sudo mount "${device}p1" /mnt/img-build/boot
-          sudo ./tools/unmount-image.sh "$device" "$sysroot"
-
-      - name: Prepare for running OS build scripts
-        run: |
-          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
-
-      # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
-      # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
-      # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
-      # with a "Transport endpoint is not connected" error)
-      - name: Run OS build scripts in an unbooted container
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/img-build"
-          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
-          echo "Booting a systemd-nspawn container for most of the setup..."
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
-          sudo ./tools/unmount-image.sh "$device" "$sysroot"
-
-      - name: Prepare to run remaining OS build scripts in a booted VM
-        id: prepare-vm
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/img-build"
-          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
-          sudo ./tools/unmount-image.sh "$device" "$sysroot"
-
-      - name: Set up arm64 VM kernel caching
-        uses: actions/cache@v4
-        env:
-          KERNEL_VERSION: 6.6.32
-        with:
-          key: kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}
-          path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
