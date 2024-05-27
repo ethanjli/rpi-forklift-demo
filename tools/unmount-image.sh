@@ -6,4 +6,5 @@ sysroot="$2"
 
 umount "$sysroot/boot"
 umount "$sysroot"
+e2fsck -p -f "${device}p2"
 losetup -d "$device"
