@@ -207,7 +207,6 @@ jobs:
       - name: Run pishrink
         run: |
           wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
-          chmod a+x pishrink.sh
           sudo ./pishrink.sh -za \
             ${{ steps.download-base.outputs.mountable_image }} \
             ${{ env.OUTPUT_IMAGE_NAME }}.img
