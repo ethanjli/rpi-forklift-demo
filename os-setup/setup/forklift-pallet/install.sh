@@ -10,10 +10,7 @@ config_files_root=$(dirname $(realpath $BASH_SOURCE))
 pallet_path="github.com/ethanjli/pallet-example-minimal"
 pallet_version="f2ea1b4"
 
-echo "overlay-sysroot.service:"
-journalctl --no-pager -u overlay-sysroot.service
-echo "bindro-run-forklift-stages-current.service:"
-journalctl --no-pager -u bindro-run-forklift-stages-current.service
+journalctl --no-pager -u "bind-.local-share-forklift-stages@-home-$USER.service"
 
 # FIXME: forklift plt switch should automatically make this path:
 mkdir -p $HOME/.local/share/forklift/pallet
@@ -25,10 +22,10 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
 journalctl --no-pager -u docker.service
+sudo lsmod
 if [ -S /var/run/docker.sock ]; then
   sudo systemctl start docker.service
 fi
-journalctl --no-pager -u docker.service
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
 fi
