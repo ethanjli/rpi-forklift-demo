@@ -125,7 +125,8 @@ jobs:
           sudo mkdir -p /mnt/img-build
           sudo mount "${device}p2" /mnt/img-build
           sudo mount "${device}p1" /mnt/img-build/boot
-          sudo ./tools/unmount-image.sh "$device" "$sysroot"
+          echo "IMAGE_SYSROOT=/mnt/img-build" >> $GITHUB_ENV
+          echo "IMAGE_DEVICE=$device" >> $GITHUB_ENV
 
       - name: Prepare for running OS build scripts
         run: |
@@ -137,25 +138,21 @@ jobs:
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
         run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/img-build"
-          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
+          sysroot=${{ env.IMAGE_SYSROOT }}
           echo "Booting a systemd-nspawn container for most of the setup..."
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
-          sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       - name: Prepare to run remaining OS build scripts in a booted VM
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/img-build"
-          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
+          sysroot=${{ env.IMAGE_SYSROOT }}
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           sudo cp -r $sysroot/boot /run/vm-boot
-          sudo ./tools/unmount-image.sh "$device" "$sysroot"
+          sudo ./tools/unmount-image.sh ${{ env.IMAGE_DEVICE }} "$sysroot"
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
@@ -191,7 +188,7 @@ jobs:
       - name: Clean up after VM boot
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/img-build"
+          sysroot=${{ env.IMAGE_SYSROOT }}
           device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \

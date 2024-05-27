@@ -38,4 +38,5 @@ sudo mkdir -p /var/lib/forklift/stages
 # /var/lib/forklift?
 sudo chown $USER /var/lib/forklift/stages
 sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service"
-sudo systemctl start "bind-.local-share-forklift-stages@-home-$USER.service" || true
+sudo systemctl start "bind-.local-share-forklift-stages@-home-$USER.service" || \
+  echo "Warning: the system's Forklift stage store is not mounted to $USER's Forklift stage store."
