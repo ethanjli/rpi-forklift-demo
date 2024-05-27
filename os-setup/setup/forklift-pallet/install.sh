@@ -18,16 +18,15 @@ journalctl --no-pager -u bindro-run-forklift-stages-current.service
 # FIXME: forklift plt switch should automatically make this path:
 mkdir -p $HOME/.local/share/forklift/pallet
 forklift plt switch --no-cache-img $pallet_path@$pallet_version
+
 # Note: the pi user will only be able to run `forklift stage plan` and `forklift stage cache-img`
-# without root permissions after a reboot, so we need `sudo -E` here; I tried running
+# without root permissions after a reboot, so we may need `sudo -E` here; I had tried running
 # `newgrp docker` in the script to avoid the need for `sudo -E here`, but it doesn't work in the
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
 sudo systemctl start sockets.target # block until sockets.target is done before checking for /var/run/docker.sock
-if [ -S /var/run/docker.sock ]; then
-  if systemctl status docker.service > /dev/null; then
-    sudo systemctl start docker.service
-  fi
+if [ -S /var/run/docker.sock ] && systemctl status docker.service > /dev/null; then
+  sudo systemctl start docker.service
 fi
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
@@ -36,6 +35,7 @@ if ! sudo -E docker ps; then
   echo "Warning: Docker does not appear to be running or available!"
   exit 0
 fi
+
 $FORKLIFT stage plan
 $FORKLIFT stage cache-img
 next_pallet="$(basename $(forklift stage locate-bun next))"
