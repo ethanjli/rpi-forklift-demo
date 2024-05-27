@@ -203,14 +203,13 @@ jobs:
           sudo e2fsck -p -f "${device}p2"
           sudo losetup -d "$device"
 
-      # TODO: split this off into a pishrink action
-      - name: Run pishrink
-        run: |
-          wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
-          chmod a+x pishrink.sh
-          sudo ./pishrink.sh -za \
-            ${{ steps.download-base.outputs.mountable_image }} \
-            ${{ env.OUTPUT_IMAGE_NAME }}.img
+      - name: Shrink the OS image
+        uses: ethanjli/pishrink-action@v0.1.0
+        with:
+          image: ${{ steps.download-base.outputs.mountable_image }}
+          destination: ${{ env.OUTPUT_IMAGE_NAME }}.img
+          compress: gzip
+          compress-parallel: true
 
       - name: Upload image to Job Artifacts
         uses: actions/upload-artifact@v4
