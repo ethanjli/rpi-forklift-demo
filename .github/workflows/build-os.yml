@@ -88,6 +88,7 @@ jobs:
               -e 's~^CONFIG_MOUSE_\(.*\)=.*~# CONFIG_MOUSE_\1 set~g' \
               -e 's~^CONFIG_MEDIA_\(.*\)=.*~# CONFIG_MEDIA_\1 is not set~g' \
               -e 's~^CONFIG_MEDIA_SUPPORT=.*~# CONFIG_MEDIA_SUPPORT is not set~g' \
+              -e 's~^CONFIG_MEDIA_USB_SUPPORT=.*~# CONFIG_MEDIA_USB_SUPPORT is not set~g' \
               -e 's~^CONFIG_THERMAL=.*~# CONFIG_THERMAL is not set~g' \
               -e 's~^CONFIG_THERMAL_\(.*\)=.*~# CONFIG_THERMAL_\1 is not set~g' \
               -e 's~^CONFIG_DRM=.*~# CONFIG_DRM is not set~g' \
@@ -100,7 +101,7 @@ jobs:
               -e 's~^CONFIG_HID=.*~# CONFIG_HID is not set~g' \
               -e 's~^CONFIG_HID_\(.*\)=.*~# CONFIG_HID_\1 is not set~g' \
               -e 's~^CONFIG_BTRFS_FS=.*~# CONFIG_BTRFS_FS is not set~g' \
-              -e 's~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g' \
+              #-e 's~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g' \
               -e 's~^CONFIG_NETWORK_FILESYSTEMS=.*~# CONFIG_NETWORK_FILESYSTEMS is not set~g' \
               -e 's~^CONFIG_NFS_FS=.*~# CONFIG_NFS_FS is not set~g' \
               -e 's~^CONFIG_NFS_\(.*\)=.*~# CONFIG_NFS_\1 is not set~g' \
