@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OUTPUT_IMAGE_NAME: ${{ inputs.name }}-${{ inputs.base_release_name }}-${{ inputs.arch }}-${{ inputs.base_image_variant }}
+      KERNEL_VERSION: 6.1.21
       SETUP_USER: pi
     permissions:
       contents: read
@@ -159,8 +160,6 @@ jobs:
 
       - name: Set up arm64 VM kernel caching
         uses: actions/cache@v4
-        env:
-          KERNEL_VERSION: 6.6.32
         with:
           key: kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}
           path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
@@ -171,8 +170,6 @@ jobs:
       # artifacts (and uploads for release) should include .config, logs, and the kernel image.
       - name: Build or use arm64 VM kernel
         id: vm-kernel
-        env:
-          KERNEL_VERSION: 6.6.32
         run: |
           cached_kernel=".cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img"
           if [ -f "$cached_kernel" ]; then
@@ -189,7 +186,6 @@ jobs:
             export CROSS_COMPILE=/bin/aarch64-linux-gnu-
             make -C "$kernel_dir" defconfig # make a .config file
             make -C "$kernel_dir" nopm.config
-            make -C "$kernel_dir" virt.config
             make -C "$kernel_dir" kvm_guest.config
             # Disable some features for faster compilation:
             # Note: PCI/PCIE must be enabled for QEMU virtio-blk devices to work.
