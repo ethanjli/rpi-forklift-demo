@@ -177,14 +177,12 @@ jobs:
             pacman -Sy
             yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
             qemu-system-aarch64 \
-              -machine virt -dtb /run/vm-boot/bcm2711-rpi-4-b.dtb \
-              -cpu max -smp 4 -m 2G \
+              -machine raspi3b -dtb /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
+              -cpu cortex-a72 -smp 4 -m 1G \
               -kernel /run/vm-boot/kernel8.img \
-              -drive file=/run/vm-sd-image.img,format=raw,if=none,id=hd0,cache=writeback \
-              -device virtio-blk,drive=hd0,bootindex=0 \
-              -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-              -device virtio-net-pci,netdev=net0 \
-              -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/vda2 rootdelay=1" \
+              -drive file=/run/vm-sd-image.img,if=sd,format=raw,index=0,media=disk \
+              -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
+              -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk1p2 rootdelay=1" \
               -nographic
 
       - name: Clean up after VM boot
