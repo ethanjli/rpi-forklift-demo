@@ -136,7 +136,6 @@ jobs:
       # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
-        if: ${{ false }}
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot="/mnt/img-build"
