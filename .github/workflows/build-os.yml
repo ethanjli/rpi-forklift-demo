@@ -112,7 +112,7 @@ jobs:
           esac
           echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
 
-      # TODO: split this off into a piresize action
+      # TODO: split this off into a pigrow action
       - name: Expand & mount base image
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
@@ -121,7 +121,7 @@ jobs:
           device="$(sudo losetup -fP --show $image)"
           sudo e2fsck -p -f "${device}p2"
           sudo resize2fs "${device}p2"
-          echo "Mounting $device to /mnt/img-build..."
+
           sudo mkdir -p /mnt/img-build
           sudo mount "${device}p2" /mnt/img-build
           sudo mount "${device}p1" /mnt/img-build/boot
@@ -138,9 +138,7 @@ jobs:
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
         run: |
-          sysroot=${{ env.IMAGE_SYSROOT }}
-          echo "Booting a systemd-nspawn container for most of the setup..."
-          sudo systemd-nspawn --directory $sysroot \
+          sudo systemd-nspawn --directory ${{ env.IMAGE_SYSROOT }} \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
 
@@ -149,6 +147,7 @@ jobs:
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot=${{ env.IMAGE_SYSROOT }}
+
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
@@ -159,7 +158,10 @@ jobs:
             /run/tools/build-custom-dtb.sh \
               /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
               /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
-          sudo ./tools/unmount-image.sh ${{ env.IMAGE_DEVICE }} "$sysroot"
+
+          sudo umount "$sysroot/boot"
+          sudo umount "$sysroot"
+          sudo losetup -d "$device"
           echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
@@ -183,30 +185,27 @@ jobs:
             -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
             -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
 
-      - name: Clean up after VM boot
+      - name: Clean up after VM boot and prepare for a headless first boot on bare metal
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot=${{ env.IMAGE_SYSROOT }}
-          device="$(sudo ./tools/mount-image.sh "$image" "$sysroot")"
+          device="$(sudo losetup -fP --show "$image")"
+          sudo mount "${device}p2" "$sysroot"
+          sudo mount "${device}p1" "$sysroot/boot"
+
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-headless-boot.sh
-          sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
-      - name: Boot in a VM again, to investigate disk repair messages
-        run: |
-          qemu-system-aarch64 -nographic \
-            -machine raspi3b -dtb ${{ steps.prepare-vm.outputs.dtb }} \
-            -cpu cortex-a72 -smp 4 -m 1G \
-            -kernel /run/vm-boot/kernel8.img \
-            -drive file=${{ steps.download-base.outputs.mountable_image }},if=sd,format=raw,index=0,media=disk \
-            -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
-            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
+          sudo umount "$sysroot/boot"
+          sudo umount "$sysroot"
+          sudo e2fsck -p -f "${device}p2"
+          sudo losetup -d "$device"
 
-      # TODO: split this off into a piresize action
+      # TODO: split this off into a pishrink action
       - name: Run pishrink
         run: |
           wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh

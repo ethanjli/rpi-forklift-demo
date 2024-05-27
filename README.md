@@ -30,7 +30,7 @@ from the `.zip` archive, flash an SD card with it, insert it into your Raspberry
 Raspberry Pi with a keyboard and display attached.
 
 Afterwards, if you log in with username `pi` and password `copepode` and run
-`curl http://localhost:3000/whoami/`, then you should see some output which looks like:
+`curl -L localhost:3000/whoami`, then you should see some output which looks like:
 
 ```
 Hostname: ...
