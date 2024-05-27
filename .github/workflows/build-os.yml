@@ -130,7 +130,7 @@ jobs:
 
       - name: Prepare for running OS build scripts
         run: |
-          sudo apt-get install systemd-container qemu-user-static binfmt-support
+          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
 
       # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
       # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
@@ -166,24 +166,15 @@ jobs:
         # installed in an Arch Linux container, e.g. with addnab/docker-run-action@v3) and doesn't
         # seem to support the `usb-net` network device type, and definitely doesn't support PCI or
         # Ethernet.
-        uses: addnab/docker-run-action@v3
-        with:
-          image: archlinux:base
-          options:
-            -v ${{ steps.download-base.outputs.mountable_image }}:/run/vm-sd-image.img
-            -v /run/vm-boot:/run/vm-boot
-            --device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun --cap-add NET_ADMIN
-          run: |
-            pacman -Sy
-            yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
-            qemu-system-aarch64 \
-              -machine raspi3b -dtb /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
-              -cpu cortex-a72 -smp 4 -m 1G \
-              -kernel /run/vm-boot/kernel8.img \
-              -drive file=/run/vm-sd-image.img,if=sd,format=raw,index=0,media=disk \
-              #-netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
-              -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
-              -nographic
+        run: |
+          qemu-system-aarch64 \
+            -machine raspi3b -dtb /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
+            -cpu cortex-a72 -smp 4 -m 1G \
+            -kernel /run/vm-boot/kernel8.img \
+            -drive file=${{ steps.download-base.outputs.mountable_image }},if=sd,format=raw,index=0,media=disk \
+            #-netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
+            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" \
+            -nographic
 
       - name: Clean up after VM boot
         run: |
