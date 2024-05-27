@@ -136,6 +136,7 @@ jobs:
       # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
+        if: ${{ false }}
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot="/mnt/img-build"
@@ -164,16 +165,11 @@ jobs:
       # cgroups results in error "failed to start daemon: Devices cgroup isn't mounted", probably
       # because systemd-nspawn makes cgroups read-only while Docker needs to manipulate cgroups).
       - name: Run OS build scripts in a booted VM
-        env:
-          # Note: the `raspi3b` hardware type doesn't work with bookworm. The `raspi4b` hardware
-          # type is only available in QEMU 9 (which isn't available in ubuntu-24.04 but can be
-          # installed in an Arch Linux container, e.g. with addnab/docker-run-action@v3) and doesn't
-          # seem to support the `usb-net` network device type, and definitely doesn't support PCI or
-          # Ethernet.
-          MACHINE: 'raspi4b'
-          CPU: cortex-a72
-          RAM: 2G
-          DTB: 'bcm2711-rpi-4-b.dtb'
+        # Note: the `raspi3b` hardware type doesn't work with bookworm. The `raspi4b` hardware
+        # type is only available in QEMU 9 (which isn't available in ubuntu-24.04 but can be
+        # installed in an Arch Linux container, e.g. with addnab/docker-run-action@v3) and doesn't
+        # seem to support the `usb-net` network device type, and definitely doesn't support PCI or
+        # Ethernet.
         uses: addnab/docker-run-action@v3
         with:
           image: archlinux:base
@@ -184,14 +180,14 @@ jobs:
           run: |
             pacman -Sy
             yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
-            ls /run/vm-sd-image.img
             qemu-system-aarch64 \
-              -machine ${{ env.MACHINE }} -cpu ${{ env.CPU }} -nographic \
-              -smp 4 -m ${{ env.RAM }} \
-              -dtb /run/vm-boot/${{ env.DTB }} -kernel /run/vm-boot/kernel8.img \
+              -machine raspi4b -dtb /run/vm-boot/bcm2711-rpi-4-b.dtb \
+              -cpu cortex-a72 -smp 4 -m 2G \
+              -kernel /run/vm-boot/kernel8.img \
               -drive file=/run/vm-sd-image.img,if=sd,format=raw,index=0,media=disk \
               -netdev user,id=net0 -device usb-net,netdev=net0 \
               -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk1p2 rootdelay=1" \
+              -nographic
 
       - name: Clean up after VM boot
         run: |
