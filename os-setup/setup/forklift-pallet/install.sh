@@ -22,9 +22,16 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
 journalctl --no-pager -u docker.service
-sudo lsmod
-if [ -S /var/run/docker.sock ]; then
+if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
+  echo "Docker couldn't start, so we'll try to start it again in legacy iptables mode..."
+  sudo cp /etc/alternatives/iptables /etc/alternatives/iptables-forkliftbackup
+  sudo cp /etc/alternatives/ip6tables /etc/alternatives/ip6tables-forkliftbackup
+  sudo ln -s /usr/sbin/iptables-legacy /etc/alternatives/iptables
+  sudo ln -s /usr/sbin/ip6tables-legacy /etc/alternatives/ip6tables
+  sudo rm /etc/alternatives/iptables-original
+  sudo rm /etc/alternatives/ip6tables-original
   sudo systemctl start docker.service
+  journalctl --no-pager -u docker.service
 fi
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
@@ -45,4 +52,11 @@ if ! $FORKLIFT stage apply; then
   echo "Warning: the next staged pallet could not be successfully applied. We'll try again on the next boot, since the pallet might require some files which will only be created during the next boot."
   # Reset the "apply-failed" status of the staged pallet to apply:
   forklift stage set-next --no-cache-img "$next_pallet"
+fi
+
+if [ -f /etc/alternatives/iptables-forkliftbackup ]; then
+  sudo mv /etc/alternatives/iptables-forkliftbackup /etc/alternatives/ip6tables
+fi
+if [ -f /etc/alternatives/ip6tables-forkliftbackup ]; then
+  sudo mv /etc/alternatives/ip6tables-forkliftbackup /etc/alternatives/ip6tables
 fi
