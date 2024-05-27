@@ -65,15 +65,13 @@ jobs:
             make -C "$kernel_dir" nopm.config
             make -C "$kernel_dir" virt.config
             make -C "$kernel_dir" kvm_guest.config
+            # Note: PCI/PCIE must be enabled for QEMU virtio-blk devices to work.
             sed -i \
               -e 's~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g' \
               -e 's~^CONFIG_ACPI_\(.*\)=.*~# CONFIG_ACPI_\1 is not set~g' \
               -e 's~^CONFIG_BPF=.*~# CONFIG_BPF is not set~g' \
               -e 's~^CONFIG_BT=.*~# CONFIG_BT is not set~g' \
               -e 's~^CONFIG_WIRELESS=.*~# CONFIG_WIRELESS is not set~g' \
-              #-e 's~^CONFIG_HAVE_PCI=.*~# CONFIG_HAVE_PCI is not set~g' \
-              #-e 's~^CONFIG_PCI=.*~# CONFIG_PCI is not set~g' \
-              #-e 's~^CONFIG_PCI_\(.*\)=.*~# CONFIG_PCI_\1 is not set~g' \
               -e 's~^CONFIG_NVME_CORE=.*~# CONFIG_NVME_CORE is not set~g' \
               -e 's~^CONFIG_\(.*\)_NVME=.*~# CONFIG_\1_NVME is not set~g' \
               -e 's~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g' \
