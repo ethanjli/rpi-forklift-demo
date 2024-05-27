@@ -71,9 +71,9 @@ jobs:
               -e 's~^CONFIG_BPF=.*~# CONFIG_BPF is not set~g' \
               -e 's~^CONFIG_BT=.*~# CONFIG_BT is not set~g' \
               -e 's~^CONFIG_WIRELESS=.*~# CONFIG_WIRELESS is not set~g' \
-              -e 's~^CONFIG_HAVE_PCI=.*~# CONFIG_HAVE_PCI is not set~g' \
-              -e 's~^CONFIG_PCI=.*~# CONFIG_PCI is not set~g' \
-              -e 's~^CONFIG_PCI_\(.*\)=.*~# CONFIG_PCI_\1 is not set~g' \
+              #-e 's~^CONFIG_HAVE_PCI=.*~# CONFIG_HAVE_PCI is not set~g' \
+              #-e 's~^CONFIG_PCI=.*~# CONFIG_PCI is not set~g' \
+              #-e 's~^CONFIG_PCI_\(.*\)=.*~# CONFIG_PCI_\1 is not set~g' \
               -e 's~^CONFIG_NVME_CORE=.*~# CONFIG_NVME_CORE is not set~g' \
               -e 's~^CONFIG_\(.*\)_NVME=.*~# CONFIG_\1_NVME is not set~g' \
               -e 's~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g' \
@@ -82,6 +82,7 @@ jobs:
               -e 's~^CONFIG_SWPHY=.*~# CONFIG_SWPHY is not set~g' \
               -e 's~^CONFIG_FIXED_PHY=.*~# CONFIG_FIXED_PHY is not set~g' \
               -e 's~^CONFIG_USB_NET_DRIVERS=.*~# CONFIG_USB_NET_DRIVERS is not set~g' \
+              -e 's~^CONFIG_USB_\(.*\)=.*~# CONFIG_USB_\1 is not set~g' \
               -e 's~^CONFIG_WLAN=.*~# CONFIG_WLAN is not set~g' \
               -e 's~^CONFIG_INPUT=.*~# CONFIG_INPUT is not set~g' \
               -e 's~^CONFIG_INPUT_\(.*\)=.*~# CONFIG_INPUT_\1 is not set~g' \
@@ -101,7 +102,7 @@ jobs:
               -e 's~^CONFIG_HID=.*~# CONFIG_HID is not set~g' \
               -e 's~^CONFIG_HID_\(.*\)=.*~# CONFIG_HID_\1 is not set~g' \
               -e 's~^CONFIG_BTRFS_FS=.*~# CONFIG_BTRFS_FS is not set~g' \
-              #-e 's~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g' \
+              -e 's~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g' \
               -e 's~^CONFIG_NETWORK_FILESYSTEMS=.*~# CONFIG_NETWORK_FILESYSTEMS is not set~g' \
               -e 's~^CONFIG_NFS_FS=.*~# CONFIG_NFS_FS is not set~g' \
               -e 's~^CONFIG_NFS_\(.*\)=.*~# CONFIG_NFS_\1 is not set~g' \
