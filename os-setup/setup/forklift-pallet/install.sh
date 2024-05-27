@@ -23,9 +23,16 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 # `newgrp docker` in the script to avoid the need for `sudo -E here`, but it doesn't work in the
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
+sudo systemctl start sockets.target # block until sockets.target is done before checking for /var/run/docker.sock
+if [ -S /var/run/docker.sock ]; then
+  if systemctl status docker.service > /dev/null; then
+    sudo systemctl start docker.service
+  fi
+fi
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
-elif ! sudo -E docker ps; then
+fi
+if ! sudo -E docker ps; then
   echo "Warning: Docker does not appear to be running or available!"
   exit 0
 fi
