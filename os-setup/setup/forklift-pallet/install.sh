@@ -32,10 +32,6 @@ journalctl --no-pager -u docker.service
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
 fi
-if ! sudo -E docker ps; then
-  echo "Warning: Docker does not appear to be running or available!"
-  exit 0
-fi
 
 $FORKLIFT stage plan
 $FORKLIFT stage cache-img
