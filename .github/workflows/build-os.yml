@@ -39,6 +39,37 @@ jobs:
       - name: Checkout Push to Registry action
         uses: actions/checkout@v4
 
+      - name: Determine Raspberry Pi OS base image URL
+        id: rpi-os-image
+        run: |
+          case '${{ inputs.base_release_name }}' in
+            'bookworm')
+              IMAGE_RELEASE_CHANNEL='raspios'
+              ;;
+            'bullseye')
+              IMAGE_RELEASE_CHANNEL='raspios_oldstable'
+              ;;
+            *)
+              echo "Unknown release name: ${{ inputs.base_release_name }}"
+              exit 1
+              ;;
+          esac
+          IMAGE_REPO_GROUP="$IMAGE_RELEASE_CHANNEL"
+          if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
+            IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
+          fi
+          IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.arch }}"
+          IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}-${{ inputs.arch }}"
+          if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
+            IMAGE_FILENAME="${IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
+          fi
+          IMAGE_FILENAME="${IMAGE_FILENAME}.img.xz"
+          IMAGE_URL="https://downloads.raspberrypi.com/$IMAGE_REPO_GROUP/images/$IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$IMAGE_FILENAME"
+          echo "RPi OS image filename: $IMAGE_FILENAME"
+          echo "image_filename=$IMAGE_FILENAME" >> $GITHUB_OUTPUT
+          echo "RPi OS image URL: $IMAGE_URL"
+          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
+
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
@@ -210,37 +241,6 @@ jobs:
             cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
           fi
           echo "kernel_image=$cached_kernel" >> $GITHUB_OUTPUT
-
-      - name: Determine Raspberry Pi OS base image URL
-        id: rpi-os-image
-        run: |
-          case '${{ inputs.base_release_name }}' in
-            'bookworm')
-              IMAGE_RELEASE_CHANNEL='raspios'
-              ;;
-            'bullseye')
-              IMAGE_RELEASE_CHANNEL='raspios_oldstable'
-              ;;
-            *)
-              echo "Unknown release name: ${{ inputs.base_release_name }}"
-              exit 1
-              ;;
-          esac
-          IMAGE_REPO_GROUP="$IMAGE_RELEASE_CHANNEL"
-          if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
-            IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
-          fi
-          IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.arch }}"
-          IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}-${{ inputs.arch }}"
-          if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
-            IMAGE_FILENAME="${IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
-          fi
-          IMAGE_FILENAME="${IMAGE_FILENAME}.img.xz"
-          IMAGE_URL="https://downloads.raspberrypi.com/$IMAGE_REPO_GROUP/images/$IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$IMAGE_FILENAME"
-          echo "RPi OS image filename: $IMAGE_FILENAME"
-          echo "image_filename=$IMAGE_FILENAME" >> $GITHUB_OUTPUT
-          echo "RPi OS image URL: $IMAGE_URL"
-          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
