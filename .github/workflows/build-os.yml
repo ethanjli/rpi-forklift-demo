@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OUTPUT_IMAGE_NAME: ${{ inputs.name }}-${{ inputs.base_release_name }}-${{ inputs.arch }}-${{ inputs.base_image_variant }}
+      KERNEL_VERSION: 6.1.21
+      SETUP_USER: pi
     permissions:
       contents: read
       packages: write
@@ -39,60 +41,175 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Determine Raspberry Pi OS base image URL
+        id: rpi-os-image
         run: |
           case '${{ inputs.base_release_name }}' in
             'bookworm')
-              BASE_IMAGE_RELEASE_CHANNEL='raspios'
+              IMAGE_RELEASE_CHANNEL='raspios'
               ;;
             'bullseye')
-              BASE_IMAGE_RELEASE_CHANNEL='raspios_oldstable'
+              IMAGE_RELEASE_CHANNEL='raspios_oldstable'
               ;;
             *)
               echo "Unknown release name: ${{ inputs.base_release_name }}"
               exit 1
               ;;
           esac
-          BASE_IMAGE_REPO_GROUP="$BASE_IMAGE_RELEASE_CHANNEL"
+          IMAGE_REPO_GROUP="$IMAGE_RELEASE_CHANNEL"
           if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
-            BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
+            IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.base_image_variant }}"
           fi
-          BASE_IMAGE_REPO_GROUP="${BASE_IMAGE_REPO_GROUP}_${{ inputs.arch }}"
-          BASE_IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}-${{ inputs.arch }}"
+          IMAGE_REPO_GROUP="${IMAGE_REPO_GROUP}_${{ inputs.arch }}"
+          IMAGE_FILENAME="${{ inputs.base_release_date }}-raspios-${{ inputs.base_release_name }}-${{ inputs.arch }}"
           if [[ "${{ inputs.base_image_variant }}" != "desktop" ]]; then
-            BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
+            IMAGE_FILENAME="${IMAGE_FILENAME}-${{ inputs.base_image_variant }}"
           fi
-          BASE_IMAGE_FILENAME="${BASE_IMAGE_FILENAME}.img.xz"
-          BASE_IMAGE="https://downloads.raspberrypi.com/$BASE_IMAGE_REPO_GROUP/images/$BASE_IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$BASE_IMAGE_FILENAME"
-          echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
-
-      - name: Prepare Pimod download cache for GitHub Actions caching
-        # Note: this is needed because we are caching a system directory. See
-        # https://github.com/actions/toolkit/issues/946 for details
-        run: sudo chown root /bin/tar && sudo chmod u+s /bin/tar
+          IMAGE_FILENAME="${IMAGE_FILENAME}.img.xz"
+          IMAGE_URL="https://downloads.raspberrypi.com/$IMAGE_REPO_GROUP/images/$IMAGE_REPO_GROUP-${{ inputs.base_release_date }}/$IMAGE_FILENAME"
+          echo "RPi OS image filename: $IMAGE_FILENAME"
+          echo "image_filename=$IMAGE_FILENAME" >> $GITHUB_OUTPUT
+          echo "RPi OS image URL: $IMAGE_URL"
+          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
 
       - name: Set up base image caching
         uses: actions/cache@v4
         with:
-          key: base-image-${{ env.BASE_IMAGE }}
-          path: /var/cache/pimod/*
+          key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
+          path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
 
-      - name: Prepare Pifile
+      # TODO: split this off into a GitHub Action, with a parameterized cache path and better
+      # handling of different archive formats
+      - name: Download & decompress base image
+        id: download-base
         run: |
-          sed -i \
-            -e 's~@@BASE_IMAGE@@~${{ env.BASE_IMAGE }}~g' \
-            -e 's~@@OUTPUT_IMAGE_NAME@@~${{ env.OUTPUT_IMAGE_NAME }}~g' \
-            Pifile
+          cached_download=".cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}"
+          if [ -f "$cached_download" ]; then
+          echo "Using cached image download at $cached_download..."
+          else
+            echo "Downloading ${{ steps.rpi-os-image.outputs.image_url }} to $cached_download..."
+            curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
+          fi
 
-      - name: Run Pimod
-        uses: Nature40/pimod@v0.6.0
-        with:
-          pifile: Pifile
+          tmpfile="$(mktemp -u)"
+          mime="$(file -b --mime-type "$cached_download")"
+          case "$mime" in
+            application/octet-stream)
+              echo "Copying $cached_download to $tmpfile..."
+              cp "$cached_download" "$tmpfile"
+              ;;
+            application/gzip | application/x-gzip)
+              echo "Extracting $cached_download to $tmpfile..."
+              gunzip -c "$cached_download" > "$tmpfile"
+              ;;
+            application/x-xz)
+              echo "Extracting $cached_download to $tmpfile..."
+              unxz -c "$cached_download" > "$tmpfile"
+              ;;
+            *)
+              echo -e "\033[0;31m### Error: Unknown image mimetype: $mime\033[0m"
+              return 1
+              ;;
+          esac
+          echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
 
+      # TODO: split this off into a pigrow action
+      - name: Expand & mount base image
+        id: expand-and-mount
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          truncate -s 8G $image
+          echo ", +" | sfdisk -N 2 $image
+          device="$(sudo losetup -fP --show $image)"
+          sudo e2fsck -p -f "${device}p2"
+          sudo resize2fs "${device}p2"
+
+          sudo mkdir -p /mnt/img-build
+          sudo mount "${device}p2" /mnt/img-build
+          sudo mount "${device}p1" /mnt/img-build/boot
+          echo "image_sysroot=/mnt/img-build" >> $GITHUB_OUTPUT
+          echo "image_device=$device" >> $GITHUB_OUTPUT
+
+      - name: Prepare for running OS build scripts
+        run: |
+          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
+
+      # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
+      # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
+      # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
+      # with a "Transport endpoint is not connected" error)
+      - name: Run OS build scripts in an unbooted container
+        run: |
+          sudo systemd-nspawn --directory ${{ steps.expand-and-mount.outputs.image_sysroot }} \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
+
+      - name: Prepare to run remaining OS build scripts in a booted VM
+        id: prepare-vm
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot=${{ steps.expand-and-mount.outputs.image_sysroot }}
+
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
+          sudo cp -r $sysroot/boot /run/vm-boot
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/tools:/run/tools \
+            --bind /run/vm-boot:/run/vm-boot \
+            /run/tools/build-custom-dtb.sh \
+              /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
+              /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
+
+          sudo umount "$sysroot/boot"
+          sudo umount "$sysroot"
+          sudo losetup -d "${{ steps.expand-and-mount.outputs.image_device }}"
+          echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
+
+      # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
+      # `docker.service` can't start properly in the container due to its interaction with
+      # the kernel and with systemd-nspawn (in bullseye Docker's use of iptables/nftables results in
+      # error "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of
+      # cgroups results in error "failed to start daemon: Devices cgroup isn't mounted", probably
+      # because systemd-nspawn makes cgroups read-only while Docker needs to manipulate cgroups).
+      - name: Run OS build scripts in a booted VM
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          qemu-system-aarch64 -nographic \
+            -machine raspi3b -dtb ${{ steps.prepare-vm.outputs.dtb }} \
+            -cpu cortex-a72 -smp 4 -m 1G \
+            -kernel /run/vm-boot/kernel8.img \
+            -drive file=$image,if=sd,format=raw,index=0,media=disk \
+            -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
+            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
+
+      - name: Clean up after VM boot and prepare for a headless first boot on bare metal
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot="/mnt/img-build"
+          device="$(sudo losetup -fP --show "$image")"
+          sudo mount "${device}p2" "$sysroot"
+          sudo mount "${device}p1" "$sysroot/boot"
+
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/os-setup:/run/os-setup \
+            /run/os-setup/ci-pre-headless-boot.sh
+
+          sudo umount "$sysroot/boot"
+          sudo umount "$sysroot"
+          sudo e2fsck -p -f "${device}p2"
+          sudo losetup -d "$device"
+
+      # TODO: split this off into a pishrink action
       - name: Run pishrink
         run: |
           wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
           chmod a+x pishrink.sh
-          sudo ./pishrink.sh -za ${{ env.OUTPUT_IMAGE_NAME }}.img
+          sudo ./pishrink.sh -za \
+            ${{ steps.download-base.outputs.mountable_image }} \
+            ${{ env.OUTPUT_IMAGE_NAME }}.img
 
       - name: Upload image to Job Artifacts
         uses: actions/upload-artifact@v4

@@ -1,9 +1,5 @@
-# Note: the env vars used in the FROM directive and TO directives are not substituted by Pimod, so
-# they must instead be substituted by GitHub Actions:
-FROM @@BASE_IMAGE@@
-TO @@OUTPUT_IMAGE_NAME@@.img
-
-PUMP 8G
+#!/bin/bash -eux
+# This script must be run as root.
 
 # Change default settings for the SD card to enable headless & keyboardless first boot
 # Note: we could change the username by making a `/boot/userconf.txt` file with the new username
@@ -15,19 +11,11 @@ PUMP 8G
 # https://github.com/raspberrypi/rpi-imager/blob/qml/src/OptionsPopup.qml and
 # the RPi SD card image's `/usr/lib/raspberrypi-sys-mods/firstboot` and
 # `/usr/lib/raspberrypi-sys-mods/imager_custom` scripts
-RUN /bin/bash -c '\
-  echo "pi:copepode" | chpasswd && \
-  sed -i -e "s~^XKBLAYOUT=.*~XKBLAYOUT=\"us\"~" /etc/default/keyboard && \
-  systemctl disable userconfig.service \
-'
+echo "pi:copepode" | chpasswd
+sed -i -e "s~^XKBLAYOUT=.*~XKBLAYOUT=\"us\"~" /etc/default/keyboard
+systemctl disable userconfig.service
 
-INSTALL os-setup /tmp/os-setup
-RUN su - pi -s /bin/bash -c '\
-  export DEBIAN_FRONTEND=noninteractive && \
-  /tmp/os-setup/setup.sh && \
-  /tmp/os-setup/cleanup.sh \
-'
-
-# This may be needed because we disabled userconfig.service. See
+# This is needed to have the login prompt on tty1 (so that a user with a keyboard can log in
+# without switching away from the default tty), because we disabled userconfig.service. See
 # https://forums.raspberrypi.com/viewtopic.php?p=2032694#p2032694
-RUN /bin/bash -c 'systemctl enable getty@tty1'
+systemctl enable getty@tty1

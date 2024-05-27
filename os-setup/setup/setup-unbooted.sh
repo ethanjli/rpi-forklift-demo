@@ -1,4 +1,6 @@
 #!/bin/bash -eu
+# This script runs setup steps which can run in an unbooted container (e.g. in a systemd-nspawn
+# container, for example) for performance reasons, and which don't need to run in a booted VM.
 
 # Determine the base path for sub-scripts
 
@@ -45,7 +47,7 @@ else
   panic "$description"
 fi
 
-description="set up OS configuration with Forklift"
+description="set up Forklift"
 report_starting "$description"
 if $build_scripts_root/forklift/install.sh ; then
   report_finished "$description"

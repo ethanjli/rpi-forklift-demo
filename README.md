@@ -26,23 +26,35 @@ are works-in-progress which are probably broken in various ways) and which compl
 and download the `rpi-forklift-demo-lite-latest.zip` or
 `rpi-forklift-demo-desktop-latest.zip` artifact from it; the download should be ~1.5 GB. The
 ZIP archive contains the SD card image as a `.img.gz` file; you should extract the `.img.gz` file
-from the `.zip` archive, flash an SD card with it, and insert it into your Raspberry Pi.
+from the `.zip` archive, flash an SD card with it, insert it into your Raspberry Pi, and boot your
+Raspberry Pi with a keyboard and display attached.
 
-After you finish installation, restart the VM, and log in (default username `pi`, default password
-`copepode`), then you should run (**without** `sudo`!):
+Afterwards, if you log in with username `pi` and password `copepode` and run
+`curl -L localhost:3000/whoami`, then you should see some output which looks like:
 
 ```
-just-setup-forklift-staging
+Hostname: ...
+IP: 127.0.0.1
+IP: ::1
+IP: ...
+RemoteAddr: ...
+GET / HTTP/1.1
+Host: localhost:3000
+User-Agent: curl/7.74.0
+...
 ```
 
-That command will enable you to run `forklift pallet switch` (or `forklift pallet stage`) commands
-(described below) without having to use `sudo -E` and without having to set
-`FORKLIFT_STAGE_STORE=/var/lib/forklift/stages` as an environment variable for those commands.
+This webpage is provided by a Docker container for the image `nginxdemos/hello`, reverse-proxied
+onto `localhost:3000/whoami` by a Docker container for the image `lucaslorentz/caddy-docker-proxy`.
+You can see these containers, and their port mappings, by running `docker ps`. Note that nothing
+is actually listening on `localhost:80`, which you can confirm by running `curl localhost:80`.
 
 ## Use a pallet
 
-This VM image comes without a Forklift pallet on your first boot, so that you can learn how to use a
-pallet. This guide will use the pallet at the latest commit from the `main` branch of
+This VM image comes the Forklift pallet at the latest commit from the `main` branch of
+[github.com/ethanjli/pallet-example-minimal](https://github.com/ethanjli/pallet-example-minimal),
+as a minimal demo. This guide will show you how to switch to a different pallet, at the latest
+commit from the `main` branch of
 [github.com/ethanjli/pallet-example-exports](https://github.com/ethanjli/pallet-example-exports)
 and apply it to your VM in order to add a few sysexts+confexts to your VM, but you can make
 your own pallet and use it instead.
