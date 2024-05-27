@@ -191,13 +191,9 @@ jobs:
             make -C "$kernel_dir" nopm.config
             make -C "$kernel_dir" virt.config
             make -C "$kernel_dir" kvm_guest.config
+            # Disable some features for faster compilation:
             # Note: PCI/PCIE must be enabled for QEMU virtio-blk devices to work.
-            # We also need to enable features required by Docker (these are normally set as kernel
-            # modules, but we need to compile them into the kernel).
             sed -i \
-              -e 's~^CONFIG_OVERLAY_FS=.*~CONFIG_OVERLAY_FS=y~g' \
-              -e 's~^CONFIG_BRIDGE_NETFILTER=.*~CONFIG_BRIDGE_NETFILTER=y~g' \
-              -e 's~^CONFIG_NETFILTER_XTABLES=.*~CONFIG_NETFILTER_XTABLES=y~g' \
               -e 's~^CONFIG_PM=.*~# CONFIG_PM is not set~g' \
               -e 's~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g' \
               -e 's~^CONFIG_ACPI_\(.*\)=.*~# CONFIG_ACPI_\1 is not set~g' \
@@ -240,6 +236,12 @@ jobs:
               -e 's~^CONFIG_NETWORK_FILESYSTEMS=.*~# CONFIG_NETWORK_FILESYSTEMS is not set~g' \
               -e 's~^CONFIG_NFS_FS=.*~# CONFIG_NFS_FS is not set~g' \
               -e 's~^CONFIG_NFS_\(.*\)=.*~# CONFIG_NFS_\1 is not set~g' \
+              "$kernel_dir/.config"
+            # Enable features required by Docker (these are normally set as kernel modules):
+            sed -i \
+              -e 's~^CONFIG_OVERLAY_FS=.*~CONFIG_OVERLAY_FS=y~g' \
+              -e 's~^CONFIG_BRIDGE_NETFILTER=.*~CONFIG_BRIDGE_NETFILTER=y~g' \
+              -e 's~^CONFIG_NETFILTER_XTABLES=.*~CONFIG_NETFILTER_XTABLES=y~g' \
               "$kernel_dir/.config"
             make -C "$kernel_dir" -j8 # build the kernel
             mkdir -p .cache/vm-kernels/

@@ -33,6 +33,12 @@ if ! docker ps; then
   FORKLIFT="sudo -E forklift"
 fi
 
+# TODO: remove this troubleshooting code:
+if ! sudo -E docker ps; then
+  echo "Warning: Docker does not appear to be running or available!"
+  exit 0
+fi
+
 $FORKLIFT stage plan
 $FORKLIFT stage cache-img
 next_pallet="$(basename $(forklift stage locate-bun next))"
