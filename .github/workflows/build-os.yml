@@ -192,12 +192,12 @@ jobs:
             make -C "$kernel_dir" virt.config
             make -C "$kernel_dir" kvm_guest.config
             # Note: PCI/PCIE must be enabled for QEMU virtio-blk devices to work.
+            # We also need to enable features required by Docker (these are normally set as kernel
+            # modules, but we need to compile them into the kernel).
             sed -i \
-              # Enable features required by Docker (these are normally set as kernel modules):
               -e 's~^CONFIG_OVERLAY_FS=.*~CONFIG_OVERLAY_FS=y~g' \
               -e 's~^CONFIG_BRIDGE_NETFILTER=.*~CONFIG_BRIDGE_NETFILTER=y~g' \
               -e 's~^CONFIG_NETFILTER_XTABLES=.*~CONFIG_NETFILTER_XTABLES=y~g' \
-              # Disable some features for faster compilation:
               -e 's~^CONFIG_PM=.*~# CONFIG_PM is not set~g' \
               -e 's~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g' \
               -e 's~^CONFIG_ACPI_\(.*\)=.*~# CONFIG_ACPI_\1 is not set~g' \
