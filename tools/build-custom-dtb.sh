@@ -13,5 +13,5 @@ mv "$tmpfile" "$custom_dtb"
 
 # dtparam=disable-bt
 tmpfile="$(mktemp -u)"
-dtmerge "$custom_dtb" "$tmpfile" /boot/firmware/overlays/disable-bt.dtbo
+dtmerge "$custom_dtb" "$tmpfile" /boot/overlays/disable-bt.dtbo
 mv "$tmpfile" "$custom_dtb"
