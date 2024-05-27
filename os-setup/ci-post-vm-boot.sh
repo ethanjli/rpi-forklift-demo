@@ -12,7 +12,7 @@ rm -rf /usr/lib/os-setup
 rm -rf /var/lib/os-setup
 
 systemctl disable "vm-boot-setup@$setup_user.service"
-rm /usr/lib/systemd/system/boot-setup@.service
+rm /usr/lib/systemd/system/vm-boot-setup@.service
 
 build_scripts_root=$(dirname $(realpath $BASH_SOURCE))
 
