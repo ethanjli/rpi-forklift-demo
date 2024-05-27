@@ -114,7 +114,6 @@ jobs:
 
       # TODO: split this off into a piresize action
       - name: Expand & mount base image
-        id: mount-base
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           truncate -s 8G $image
@@ -130,7 +129,7 @@ jobs:
 
       - name: Prepare for running OS build scripts
         run: |
-          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
+          sudo apt-get install systemd-container qemu-user-static binfmt-support
 
       # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
       # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
@@ -148,7 +147,6 @@ jobs:
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
 
       - name: Prepare to run remaining OS build scripts in a booted VM
-        id: prepare-vm
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot="/mnt/img-build"
@@ -156,126 +154,44 @@ jobs:
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
+          sudo cp -r $sysroot/boot /run/vm-boot
           sudo ./tools/unmount-image.sh "$device" "$sysroot"
-
-      - name: Set up arm64 VM kernel caching
-        uses: actions/cache@v4
-        with:
-          key: kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}
-          path: .cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img
-
-      # TODO: build and publish arm64 vm kernels for QEMU `virt` machines in a separate repo
-      # (see https://lca-kernel.ozlabs.org/2022-Currey-Abusing-GitHub-Actions-for-building-and-testing-kernels.pdf)
-      # Trigger it with a workflow dispatch, providing the kernel version to build. Uploaded
-      # artifacts (and uploads for release) should include .config, logs, and the kernel image.
-      - name: Build or use arm64 VM kernel
-        id: vm-kernel
-        run: |
-          cached_kernel=".cache/vm-kernels/kernel-linux-virt-arm64-${{ env.KERNEL_VERSION }}.img"
-          if [ -f "$cached_kernel" ]; then
-            echo "Using cached image kernel at $cached_kernel..."
-          else
-            # From https://gist.github.com/cGandom/23764ad5517c8ec1d7cd904b923ad863
-            echo "Compiling kernel ${{ env.KERNEL_VERSION }} to $cached_kernel..."
-            sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-            kernel_dir="linux-${{ env.KERNEL_VERSION }}"
-            echo "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz"
-            curl -s -L "https://cdn.kernel.org/pub/linux/kernel/v6.x/$kernel_dir.tar.xz" | \
-              tar -xJf -
-            export ARCH=arm64
-            export CROSS_COMPILE=/bin/aarch64-linux-gnu-
-            make -C "$kernel_dir" defconfig # make a .config file
-            make -C "$kernel_dir" nopm.config
-            make -C "$kernel_dir" kvm_guest.config
-            # Disable some features for faster compilation:
-            # Note: PCI/PCIE must be enabled for QEMU virtio-blk devices to work.
-            sed -i \
-              -e 's~^CONFIG_PM=.*~# CONFIG_PM is not set~g' \
-              -e 's~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g' \
-              -e 's~^CONFIG_ACPI_\(.*\)=.*~# CONFIG_ACPI_\1 is not set~g' \
-              -e 's~^CONFIG_BPF=.*~# CONFIG_BPF is not set~g' \
-              -e 's~^CONFIG_BT=.*~# CONFIG_BT is not set~g' \
-              -e 's~^CONFIG_WIRELESS=.*~# CONFIG_WIRELESS is not set~g' \
-              -e 's~^CONFIG_NVME_CORE=.*~# CONFIG_NVME_CORE is not set~g' \
-              -e 's~^CONFIG_\(.*\)_NVME=.*~# CONFIG_\1_NVME is not set~g' \
-              -e 's~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g' \
-              -e 's~^CONFIG_\(.*\)_PHY=.*~# CONFIG_\1_PHY is not set~g' \
-              -e 's~^CONFIG_PHY_\(.*\)=.*~# CONFIG_PHY_\1 is not set~g' \
-              -e 's~^CONFIG_PHYLINK=.*~# CONFIG_PHYLINK is not set~g' \
-              -e 's~^CONFIG_PHYLIB=.*~# CONFIG_PHYLIB is not set~g' \
-              -e 's~^CONFIG_SWPHY=.*~# CONFIG_SWPHY is not set~g' \
-              -e 's~^CONFIG_USB_NET_DRIVERS=.*~# CONFIG_USB_NET_DRIVERS is not set~g' \
-              -e 's~^CONFIG_USB_\(.*\)=.*~# CONFIG_USB_\1 is not set~g' \
-              -e 's~^CONFIG_WLAN=.*~# CONFIG_WLAN is not set~g' \
-              -e 's~^CONFIG_INPUT=.*~# CONFIG_INPUT is not set~g' \
-              -e 's~^CONFIG_INPUT_\(.*\)=.*~# CONFIG_INPUT_\1 is not set~g' \
-              -e 's~^CONFIG_MOUSE_\(.*\)=.*~# CONFIG_MOUSE_\1 set~g' \
-              -e 's~^CONFIG_PINCTRL=.*~# CONFIG_PINCTRL is not set~g' \
-              -e 's~^CONFIG_PINCTRL_\(.*\)=.*~# CONFIG_PINCTRL_\1 set~g' \
-              -e 's~^CONFIG_MEDIA_\(.*\)=.*~# CONFIG_MEDIA_\1 is not set~g' \
-              -e 's~^CONFIG_MEDIA_SUPPORT=.*~# CONFIG_MEDIA_SUPPORT is not set~g' \
-              -e 's~^CONFIG_MEDIA_USB_SUPPORT=.*~# CONFIG_MEDIA_USB_SUPPORT is not set~g' \
-              -e 's~^CONFIG_THERMAL=.*~# CONFIG_THERMAL is not set~g' \
-              -e 's~^CONFIG_THERMAL_\(.*\)=.*~# CONFIG_THERMAL_\1 is not set~g' \
-              -e 's~^CONFIG_DRM=.*~# CONFIG_DRM is not set~g' \
-              -e 's~^CONFIG_DRM_\(.*\)=.*~# CONFIG_DRM_\1 is not set~g' \
-              -e 's~^CONFIG_FB=.*~# CONFIG_FB is not set~g' \
-              -e 's~^CONFIG_FB_\(.*\)=.*~# CONFIG_FB_\1 is not set~g' \
-              -e 's~^CONFIG_SOUND=.*~# CONFIG_SOUND is not set~g' \
-              -e 's~^CONFIG_SND=.*~# CONFIG_SND is not set~g' \
-              -e 's~^CONFIG_SND_PCI=.*~# CONFIG_SND_PCI is not set~g' \
-              -e 's~^CONFIG_SND_USB=.*~# CONFIG_SND_USB is not set~g' \
-              -e 's~^CONFIG_HID=.*~# CONFIG_HID is not set~g' \
-              -e 's~^CONFIG_HID_\(.*\)=.*~# CONFIG_HID_\1 is not set~g' \
-              -e 's~^CONFIG_BTRFS_FS=.*~# CONFIG_BTRFS_FS is not set~g' \
-              -e 's~^CONFIG_MISC_FILESYSTEMS=.*~# CONFIG_MISC_FILESYSTEMS is not set~g' \
-              -e 's~^CONFIG_NETWORK_FILESYSTEMS=.*~# CONFIG_NETWORK_FILESYSTEMS is not set~g' \
-              -e 's~^CONFIG_NFS_FS=.*~# CONFIG_NFS_FS is not set~g' \
-              -e 's~^CONFIG_NFS_\(.*\)=.*~# CONFIG_NFS_\1 is not set~g' \
-              "$kernel_dir/.config"
-            # Enable features required by Docker (these are normally set as kernel modules):
-            sed -i \
-              -e 's~^CONFIG_OVERLAY_FS=.*~CONFIG_OVERLAY_FS=y~g' \
-              -e 's~^CONFIG_BRIDGE_NETFILTER=.*~CONFIG_BRIDGE_NETFILTER=y~g' \
-              -e 's~^CONFIG_BRIDGE=.*~CONFIG_BRIDGE=y~g' \
-              -e 's~^CONFIG_NF_TABLES=.*~CONFIG_NF_TABLES=y~g' \
-              -e 's~^CONFIG_NETFILTER_XTABLES=.*~CONFIG_NETFILTER_XTABLES=y~g' \
-              -e 's~^CONFIG_NETFILTER_XTABLES_COMPAT=.*~CONFIG_NETFILTER_XTABLES_COMPAT=y~g' \
-              "$kernel_dir/.config"
-            make -C "$kernel_dir" -j8 # build the kernel
-            mkdir -p .cache/vm-kernels/
-            cp "$kernel_dir/arch/arm64/boot/Image" "$cached_kernel"
-          fi
-          echo "kernel_image=$cached_kernel" >> $GITHUB_OUTPUT
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
-      # the kernel (in bullseye Docker's use of iptables/nftables results in error
-      # "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of cgroups
-      # results in error "failed to start daemon: Devices cgroup isn't mounted").
+      # the kernel and with systemd-nspawn (in bullseye Docker's use of iptables/nftables results in
+      # error "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of
+      # cgroups results in error "failed to start daemon: Devices cgroup isn't mounted", probably
+      # because systemd-nspawn makes cgroups read-only while Docker needs to manipulate cgroups).
       - name: Run OS build scripts in a booted VM
         env:
-          # We use the `virt` hardware type because the `raspi3b` hardware type doesn't work with
-          # bookworm, and because the `raspi4b` hardware type is only available in QEMU 9 (which
-          # isn't available in ubuntu-24.04 but can be installed in an Arch Linux container,
-          # e.g. with addnab/docker-run-action@v3) and doesn't seem to support the `usb-net` network
-          # device type, and definitely doesn't support PCI or Ethernet.
-          MACHINE: 'virt'
-          CPU: max
-          RAM: 4G
-          FS_IMAGE: ${{ steps.download-base.outputs.mountable_image }}
-        run: |
-          # From https://gist.github.com/cGandom/23764ad5517c8ec1d7cd904b923ad863
-          qemu-system-aarch64 \
-            -machine ${{ env.MACHINE }} -cpu ${{ env.CPU }} -nographic \
-            -smp 4 -m ${{ env.RAM }} \
-            -kernel ${{ steps.vm-kernel.outputs.kernel_image }} \
-            -drive file=${{ env.FS_IMAGE }},if=none,id=hd0,format=raw,cache=writeback \
-            -device virtio-blk,drive=hd0,bootindex=0 \
-            -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-            -device virtio-net-pci,netdev=net0 \
-            -monitor telnet:127.0.0.1:5555,server,nowait \
-            -append "root=/dev/vda2"
+          # Note: the `raspi3b` hardware type doesn't work with bookworm. The `raspi4b` hardware
+          # type is only available in QEMU 9 (which isn't available in ubuntu-24.04 but can be
+          # installed in an Arch Linux container, e.g. with addnab/docker-run-action@v3) and doesn't
+          # seem to support the `usb-net` network device type, and definitely doesn't support PCI or
+          # Ethernet.
+          MACHINE: 'raspi4b'
+          CPU: cortex-a72
+          RAM: 2G
+          DTB: 'bcm2711-rpi-4-b.dtb'
+        uses: addnab/docker-run-action@v3
+        with:
+          image: archlinux:base
+          options:
+            -v ${{ steps.download-base.outputs.mountable_image }}:/run/vm-sd-image.img
+            -v /run/vm-boot:/run/vm-boot
+            --device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun --cap-add NET_ADMIN
+          run: |
+            pacman -Sy
+            yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
+            qemu-system-aarch64 \
+              -machine ${{ env.MACHINE }} -cpu ${{ env.CPU }} -nographic \
+              -smp 4 -m ${{ env.RAM }} \
+              -dtb /run/vm-boot/${{ env.DTB }} -kernel /run/vm-boot/kernel8.img \
+              -kernel ${{ steps.vm-kernel.outputs.kernel_image }} \
+              -drive file=/run/vm-sd-image.img,if=sd,format=raw,index=0,media=disk \
+              -netdev user,id=net0 -device usb-net,netdev=net0 \
+              -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk1p2 rootdelay=1" \
 
       - name: Clean up after VM boot
         run: |
