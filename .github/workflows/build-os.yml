@@ -82,6 +82,7 @@ jobs:
       - name: Download & decompress base image
         id: download-base
         run: |
+          mkdir -p .cache/base-images
           cached_download=".cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}"
           if [ -f "$cached_download" ]; then
           echo "Using cached image download at $cached_download..."
