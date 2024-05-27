@@ -34,6 +34,8 @@ sudo systemctl preset \
 local_stage_store="$HOME/.local/share/forklift/stages"
 mkdir -p "$local_stage_store"
 sudo mkdir -p /var/lib/forklift/stages
+# TODO: maybe we should instead make a new "forklift" group which owns everything in
+# /var/lib/forklift?
 sudo chown $USER /var/lib/forklift/stages
 sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service"
 sudo mount -o bind,user /var/lib/forklift/stages "$local_stage_store"

@@ -16,14 +16,7 @@ echo "bindro-run-forklift-stages-current.service:"
 journalctl --no-pager -u bindro-run-forklift-stages-current.service
 
 # FIXME: forklift plt switch should automatically make this path:
-ls -l $HOME/.local/share
-ls -l $HOME/.local/share/forklift
 mkdir -p $HOME/.local/share/forklift/pallet
-ls -l $HOME/.local/share/forklift/pallet
-ls -l $HOME/.local/share/forklift/stages
-# TODO: delete this troubleshooting line:
-exit 0
-
 forklift plt switch --no-cache-img $pallet_path@$pallet_version
 # Note: the pi user will only be able to run `forklift stage plan` and `forklift stage cache-img`
 # without root permissions after a reboot, so we need `sudo -E` here; I tried running
