@@ -145,6 +145,7 @@ jobs:
             su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
 
       - name: Prepare to run remaining OS build scripts in a booted VM
+        id: prepare-vm
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           sysroot=${{ env.IMAGE_SYSROOT }}
@@ -152,7 +153,14 @@ jobs:
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           sudo cp -r $sysroot/boot /run/vm-boot
+          sudo systemd-nspawn --directory $sysroot \
+            --bind "$(pwd)"/tools:/run/tools \
+            --bind /run/vm-boot:/run/vm-boot \
+            /run/tools/build-custom-dtb.sh \
+              /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
+              /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
           sudo ./tools/unmount-image.sh ${{ env.IMAGE_DEVICE }} "$sysroot"
+          echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
@@ -168,10 +176,11 @@ jobs:
         # Ethernet.
         run: |
           qemu-system-aarch64 -nographic \
-            -machine raspi3b -dtb /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
+            -machine raspi3b -dtb ${{ steps.prepare-vm.outputs.dtb }} \
             -cpu cortex-a72 -smp 4 -m 1G \
             -kernel /run/vm-boot/kernel8.img \
             -drive file=${{ steps.download-base.outputs.mountable_image }},if=sd,format=raw,index=0,media=disk \
+            -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
             -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
 
       - name: Clean up after VM boot
