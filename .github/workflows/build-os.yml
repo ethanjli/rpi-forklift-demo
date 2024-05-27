@@ -67,6 +67,7 @@ jobs:
             make -C "$kernel_dir" kvm_guest.config
             # Note: PCI/PCIE must be enabled for QEMU virtio-blk devices to work.
             sed -i \
+              -e 's~^CONFIG_PM=.*~# CONFIG_PM is not set~g' \
               -e 's~^CONFIG_ACPI=.*~# CONFIG_ACPI is not set~g' \
               -e 's~^CONFIG_ACPI_\(.*\)=.*~# CONFIG_ACPI_\1 is not set~g' \
               -e 's~^CONFIG_BPF=.*~# CONFIG_BPF is not set~g' \
@@ -75,16 +76,19 @@ jobs:
               -e 's~^CONFIG_NVME_CORE=.*~# CONFIG_NVME_CORE is not set~g' \
               -e 's~^CONFIG_\(.*\)_NVME=.*~# CONFIG_\1_NVME is not set~g' \
               -e 's~^CONFIG_ETHERNET=.*~# CONFIG_ETHERNET is not set~g' \
+              -e 's~^CONFIG_\(.*\)_PHY=.*~# CONFIG_\1_PHY is not set~g' \
+              -e 's~^CONFIG_PHY_\(.*\)=.*~# CONFIG_PHY_\1 is not set~g' \
               -e 's~^CONFIG_PHYLINK=.*~# CONFIG_PHYLINK is not set~g' \
               -e 's~^CONFIG_PHYLIB=.*~# CONFIG_PHYLIB is not set~g' \
               -e 's~^CONFIG_SWPHY=.*~# CONFIG_SWPHY is not set~g' \
-              -e 's~^CONFIG_FIXED_PHY=.*~# CONFIG_FIXED_PHY is not set~g' \
               -e 's~^CONFIG_USB_NET_DRIVERS=.*~# CONFIG_USB_NET_DRIVERS is not set~g' \
               -e 's~^CONFIG_USB_\(.*\)=.*~# CONFIG_USB_\1 is not set~g' \
               -e 's~^CONFIG_WLAN=.*~# CONFIG_WLAN is not set~g' \
               -e 's~^CONFIG_INPUT=.*~# CONFIG_INPUT is not set~g' \
               -e 's~^CONFIG_INPUT_\(.*\)=.*~# CONFIG_INPUT_\1 is not set~g' \
               -e 's~^CONFIG_MOUSE_\(.*\)=.*~# CONFIG_MOUSE_\1 set~g' \
+              -e 's~^CONFIG_PINCTRL=.*~# CONFIG_PINCTRL is not set~g' \
+              -e 's~^CONFIG_PINCTRL_\(.*\)=.*~# CONFIG_PINCTRL_\1 set~g' \
               -e 's~^CONFIG_MEDIA_\(.*\)=.*~# CONFIG_MEDIA_\1 is not set~g' \
               -e 's~^CONFIG_MEDIA_SUPPORT=.*~# CONFIG_MEDIA_SUPPORT is not set~g' \
               -e 's~^CONFIG_MEDIA_USB_SUPPORT=.*~# CONFIG_MEDIA_USB_SUPPORT is not set~g' \
@@ -93,6 +97,7 @@ jobs:
               -e 's~^CONFIG_DRM=.*~# CONFIG_DRM is not set~g' \
               -e 's~^CONFIG_DRM_\(.*\)=.*~# CONFIG_DRM_\1 is not set~g' \
               -e 's~^CONFIG_FB=.*~# CONFIG_FB is not set~g' \
+              -e 's~^CONFIG_FB_\(.*\)=.*~# CONFIG_FB_\1 is not set~g' \
               -e 's~^CONFIG_SOUND=.*~# CONFIG_SOUND is not set~g' \
               -e 's~^CONFIG_SND=.*~# CONFIG_SND is not set~g' \
               -e 's~^CONFIG_SND_PCI=.*~# CONFIG_SND_PCI is not set~g' \
