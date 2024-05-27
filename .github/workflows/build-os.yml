@@ -126,8 +126,8 @@ jobs:
           sudo mkdir -p /mnt/img-build
           sudo mount "${device}p2" /mnt/img-build
           sudo mount "${device}p1" /mnt/img-build/boot
-          echo "image_sysroot=/mnt/img-build" >> $GITHUB_OUTPUTS
-          echo "image_device=$device" >> $GITHUB_OUTPUTS
+          echo "image_sysroot=/mnt/img-build" >> $GITHUB_OUTPUT
+          echo "image_device=$device" >> $GITHUB_OUTPUT
 
       - name: Prepare for running OS build scripts
         run: |
