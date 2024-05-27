@@ -152,6 +152,7 @@ jobs:
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           sudo cp -r $sysroot/boot /run/vm-boot
+          ls -lR /run/vm-boot
           sudo ./tools/unmount-image.sh ${{ env.IMAGE_DEVICE }} "$sysroot"
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
@@ -176,11 +177,12 @@ jobs:
           run: |
             pacman -Sy
             yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
+            ls -lR /run/vm-boot
             qemu-system-aarch64 \
               -machine virt -dtb /run/vm-boot/bcm2710-rpi-4-b.dtb \
               -cpu max -smp 4 -m 4G \
               -kernel /run/vm-boot/kernel8.img \
-              -drive file=/run/vm-sd-image.img,if=none,id=hd0,cache=writeback \
+              -drive file=/run/vm-sd-image.img,format=raw,if=none,id=hd0,cache=writeback \
               -device virtio-blk,drive=hd0,bootindex=0 \
               -netdev user,id=net0,hostfwd=tcp::2222-:22 \
               -device virtio-net-pci,netdev=net0 \
