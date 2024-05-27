@@ -178,7 +178,7 @@ jobs:
             yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
             qemu-system-aarch64 \
               -machine virt -dtb /run/vm-boot/bcm2711-rpi-4-b.dtb \
-              -cpu max -smp 4 -m 4G \
+              -cpu max -smp 4 -m 2G \
               -kernel /run/vm-boot/kernel8.img \
               -drive file=/run/vm-sd-image.img,format=raw,if=none,id=hd0,cache=writeback \
               -device virtio-blk,drive=hd0,bootindex=0 \
