@@ -23,13 +23,13 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 FORKLIFT="forklift"
 journalctl --no-pager -u docker.service
 if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
-  echo "Docker couldn't start, so we'll try to start it again in legacy iptables mode..."
+  echo "Warning: Docker couldn't start, so we'll try to start it again with iptables-legacy..."
   sudo cp /etc/alternatives/iptables /etc/alternatives/iptables-forkliftbackup
   sudo cp /etc/alternatives/ip6tables /etc/alternatives/ip6tables-forkliftbackup
+  sudo rm /etc/alternatives/iptables
+  sudo rm /etc/alternatives/ip6tables
   sudo ln -s /usr/sbin/iptables-legacy /etc/alternatives/iptables
   sudo ln -s /usr/sbin/ip6tables-legacy /etc/alternatives/ip6tables
-  sudo rm /etc/alternatives/iptables-original
-  sudo rm /etc/alternatives/ip6tables-original
   sudo systemctl start docker.service
   journalctl --no-pager -u docker.service
 fi
