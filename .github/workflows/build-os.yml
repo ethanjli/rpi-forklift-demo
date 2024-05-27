@@ -184,11 +184,11 @@ jobs:
           run: |
             pacman -Sy
             yes | pacman -S qemu-system-aarch64 qemu-user-static qemu-user-static-binfmt
+            ls /run/vm-sd-image.img
             qemu-system-aarch64 \
               -machine ${{ env.MACHINE }} -cpu ${{ env.CPU }} -nographic \
               -smp 4 -m ${{ env.RAM }} \
               -dtb /run/vm-boot/${{ env.DTB }} -kernel /run/vm-boot/kernel8.img \
-              -kernel ${{ steps.vm-kernel.outputs.kernel_image }} \
               -drive file=/run/vm-sd-image.img,if=sd,format=raw,index=0,media=disk \
               -netdev user,id=net0 -device usb-net,netdev=net0 \
               -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk1p2 rootdelay=1" \
