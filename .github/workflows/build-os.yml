@@ -114,6 +114,7 @@ jobs:
 
       # TODO: split this off into a pigrow action
       - name: Expand & mount base image
+        id: expand-and-mount
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           truncate -s 8G $image
@@ -125,8 +126,8 @@ jobs:
           sudo mkdir -p /mnt/img-build
           sudo mount "${device}p2" /mnt/img-build
           sudo mount "${device}p1" /mnt/img-build/boot
-          echo "IMAGE_SYSROOT=/mnt/img-build" >> $GITHUB_ENV
-          echo "IMAGE_DEVICE=$device" >> $GITHUB_ENV
+          echo "image_sysroot=/mnt/img-build" >> $GITHUB_OUTPUTS
+          echo "image_device=$device" >> $GITHUB_OUTPUTS
 
       - name: Prepare for running OS build scripts
         run: |
@@ -138,7 +139,7 @@ jobs:
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
         run: |
-          sudo systemd-nspawn --directory ${{ env.IMAGE_SYSROOT }} \
+          sudo systemd-nspawn --directory ${{ steps.expand-and-mount.outputs.image_sysroot }} \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
 
@@ -146,7 +147,7 @@ jobs:
         id: prepare-vm
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot=${{ env.IMAGE_SYSROOT }}
+          sysroot=${{ steps.expand-and-mount.outputs.image_sysroot }}
 
           sudo systemd-nspawn --directory $sysroot \
             --bind "$(pwd)"/os-setup:/run/os-setup \
@@ -161,7 +162,7 @@ jobs:
 
           sudo umount "$sysroot/boot"
           sudo umount "$sysroot"
-          sudo losetup -d "$device"
+          sudo losetup -d "${{ steps.expand-and-mount.outputs.image_device }}"
           echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
@@ -171,24 +172,20 @@ jobs:
       # cgroups results in error "failed to start daemon: Devices cgroup isn't mounted", probably
       # because systemd-nspawn makes cgroups read-only while Docker needs to manipulate cgroups).
       - name: Run OS build scripts in a booted VM
-        # Note: the `raspi3b` hardware type doesn't work with bookworm. The `raspi4b` hardware
-        # type is only available in QEMU 9 (which isn't available in ubuntu-24.04 but can be
-        # installed in an Arch Linux container, e.g. with addnab/docker-run-action@v3) and doesn't
-        # seem to support the `usb-net` network device type, and definitely doesn't support PCI or
-        # Ethernet.
         run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
           qemu-system-aarch64 -nographic \
             -machine raspi3b -dtb ${{ steps.prepare-vm.outputs.dtb }} \
             -cpu cortex-a72 -smp 4 -m 1G \
             -kernel /run/vm-boot/kernel8.img \
-            -drive file=${{ steps.download-base.outputs.mountable_image }},if=sd,format=raw,index=0,media=disk \
+            -drive file=$image,if=sd,format=raw,index=0,media=disk \
             -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
             -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
 
       - name: Clean up after VM boot and prepare for a headless first boot on bare metal
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot=${{ env.IMAGE_SYSROOT }}
+          sysroot="/mnt/img-build"
           device="$(sudo losetup -fP --show "$image")"
           sudo mount "${device}p2" "$sysroot"
           sudo mount "${device}p1" "$sysroot/boot"
