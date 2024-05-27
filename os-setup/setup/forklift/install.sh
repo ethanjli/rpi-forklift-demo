@@ -34,8 +34,8 @@ sudo systemctl preset \
 local_stage_store="$HOME/.local/share/forklift/stages"
 mkdir -p "$local_stage_store"
 sudo mkdir -p /var/lib/forklift/stages
-#sudo chown /var/lib/forklift/stages
+#sudo chown $USER /var/lib/forklift/stages
 sudo systemctl enable "bind-.local-share-forklift-stages@-home-$USER.service"
-sudo mount $USER -o bind,user /var/lib/forklift/stages "$local_stage_store"
+sudo mount -o bind,user /var/lib/forklift/stages "$local_stage_store"
 ls -l $HOME/.local/share/forklift
 ls -l $HOME/.local/share/forklift/stages
