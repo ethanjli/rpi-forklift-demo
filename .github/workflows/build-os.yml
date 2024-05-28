@@ -169,7 +169,7 @@ jobs:
           sudo ./tools/unmount.sh "$device"
 
       - name: Shrink the OS image
-        uses: ethanjli/pishrink-action@v0.1.1
+        uses: ethanjli/pishrink-action@v0.1.2
         with:
           image: ${{ steps.expand-image.outputs.destination }}
           destination: ${{ env.OUTPUT_IMAGE_NAME }}.img
