@@ -91,7 +91,7 @@ jobs:
             curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
           fi
 
-          tmpfile="$(mktemp -u)"
+          tmpfile="$(mktemp)"
           mime="$(file -b --mime-type "$cached_download")"
           case "$mime" in
             application/octet-stream)
@@ -114,8 +114,8 @@ jobs:
           echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
 
       # TODO: split this off into a pigrow action
-      - name: Expand & mount base image
-        id: expand-and-mount
+      - name: Expand base image
+        id: expand
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
           truncate -s 8G $image
@@ -123,12 +123,7 @@ jobs:
           device="$(sudo losetup -fP --show $image)"
           sudo e2fsck -p -f "${device}p2"
           sudo resize2fs "${device}p2"
-
-          sudo mkdir -p /mnt/img-build
-          sudo mount "${device}p2" /mnt/img-build
-          sudo mount "${device}p1" /mnt/img-build/boot
-          echo "image_sysroot=/mnt/img-build" >> $GITHUB_OUTPUT
-          echo "image_device=$device" >> $GITHUB_OUTPUT
+          sudo losetup -d "$device"
 
       - name: Prepare for running OS build scripts
         run: |
@@ -140,31 +135,36 @@ jobs:
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
         run: |
-          sudo systemd-nspawn --directory ${{ steps.expand-and-mount.outputs.image_sysroot }} \
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
+
+          sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
+
+          sudo ./tools/unmount.sh "$device" "$sysroot"
 
       - name: Prepare to run remaining OS build scripts in a booted VM
         id: prepare-vm
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot=${{ steps.expand-and-mount.outputs.image_sysroot }}
+          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
 
-          sudo systemd-nspawn --directory $sysroot \
+          sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           sudo cp -r $sysroot/boot /run/vm-boot
-          sudo systemd-nspawn --directory $sysroot \
+          sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/tools:/run/tools \
             --bind /run/vm-boot:/run/vm-boot \
             /run/tools/build-custom-dtb.sh \
               /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
               /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
-
-          sudo umount "$sysroot/boot"
-          sudo umount "$sysroot"
-          sudo losetup -d "${{ steps.expand-and-mount.outputs.image_device }}"
           echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
+
+          sudo ./tools/unmount.sh "$device" "$sysroot"
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
@@ -183,25 +183,29 @@ jobs:
             -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
             -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
 
-      - name: Clean up after VM boot and prepare for a headless first boot on bare metal
+      - name: Clean up after VM boot
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/img-build"
-          device="$(sudo losetup -fP --show "$image")"
-          sudo mount "${device}p2" "$sysroot"
-          sudo mount "${device}p1" "$sysroot/boot"
+          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
 
-          sudo systemd-nspawn --directory $sysroot \
+          sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
-          sudo systemd-nspawn --directory $sysroot \
+
+          sudo ./tools/unmount.sh "$device" "$sysroot"
+
+      - name: Prepare for a headless first boot on bare metal
+        run: |
+          image="${{ steps.download-base.outputs.mountable_image }}"
+          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
+
+          sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-headless-boot.sh
 
-          sudo umount "$sysroot/boot"
-          sudo umount "$sysroot"
-          sudo e2fsck -p -f "${device}p2"
-          sudo losetup -d "$device"
+          sudo ./tools/unmount.sh "$device" "$sysroot"
 
       - name: Shrink the OS image
         uses: ethanjli/pishrink-action@v0.1.1
