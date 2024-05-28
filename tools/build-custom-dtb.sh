@@ -7,11 +7,11 @@ custom_dtb="$2"
 cp "$base_dtb" "$custom_dtb"
 
 # dtparam=uart0=on
-tmpfile="$(mktemp dtb.XXXXXXX)"
+tmpfile="$(mktemp --tmpdir=/tmp dtb.XXXXXXX)"
 dtmerge "$custom_dtb" "$tmpfile" - uart0=on
 mv "$tmpfile" "$custom_dtb"
 
 # dtparam=disable-bt
-tmpfile="$(mktemp dtb.XXXXXXX)"
+tmpfile="$(mktemp --tmpdir=/tmp dtb.XXXXXXX)"
 dtmerge "$custom_dtb" "$tmpfile" /boot/overlays/disable-bt.dtbo
 mv "$tmpfile" "$custom_dtb"
