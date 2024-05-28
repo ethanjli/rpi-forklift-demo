@@ -76,7 +76,7 @@ jobs:
         uses: valadaptive/download-file-action@v0.1.0
         with:
           url: ${{ steps.rpi-os-image.outputs.image_url }}
-          destination: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
+          destination: /tmp/${{ steps.rpi-os-image.outputs.image_filename }}
 
       - name: Decompress & grow base image
         id: expand-image
