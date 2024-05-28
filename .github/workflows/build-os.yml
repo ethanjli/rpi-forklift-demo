@@ -80,7 +80,7 @@ jobs:
 
       - name: Decompress & grow base image
         id: expand-image
-        uses: ethanjli/pigrow-action@v0.1.0
+        uses: ethanjli/pigrow-action@v0.1.1
         with:
           image: ${{ steps.download-base.outputs.destination }}
           mode: to
