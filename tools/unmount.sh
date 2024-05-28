@@ -4,9 +4,11 @@
 device="$1"
 sysroot="$2"
 
-echo "Unmounting $sysroot..." 1>&2
-umount "$sysroot/boot"
-umount "$sysroot"
+if [ ! -z "$sysroot" ]; then
+  echo "Unmounting $sysroot..." 1>&2
+  umount "$sysroot/boot"
+  umount "$sysroot"
+fi
 
 echo "Unmounting $device..." 1>&2
 e2fsck -p -f "${device}p2"

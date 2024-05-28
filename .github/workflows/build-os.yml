@@ -77,9 +77,8 @@ jobs:
           key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
           path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
 
-      # TODO: split this off into a GitHub Action, with a parameterized cache path and better
-      # handling of different archive formats
-      - name: Download & decompress base image
+      # TODO: replace this with a GitHub Action for a cached download of a file
+      - name: Download base image
         id: download-base
         run: |
           mkdir -p .cache/base-images
@@ -90,40 +89,15 @@ jobs:
             echo "Downloading ${{ steps.rpi-os-image.outputs.image_url }} to $cached_download..."
             curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
           fi
+          echo "download=$cached_download" >> $GITHUB_OUTPUT
 
-          tmpfile="$(mktemp --tmpdir=/tmp os-image.XXXXXXX)"
-          mime="$(file -b --mime-type "$cached_download")"
-          case "$mime" in
-            application/octet-stream)
-              echo "Copying $cached_download to $tmpfile..."
-              cp "$cached_download" "$tmpfile"
-              ;;
-            application/gzip | application/x-gzip)
-              echo "Extracting $cached_download to $tmpfile..."
-              gunzip -c "$cached_download" > "$tmpfile"
-              ;;
-            application/x-xz)
-              echo "Extracting $cached_download to $tmpfile..."
-              unxz -c "$cached_download" > "$tmpfile"
-              ;;
-            *)
-              echo -e "\033[0;31m### Error: Unknown image mimetype: $mime\033[0m"
-              return 1
-              ;;
-          esac
-          echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
-
-      # TODO: split this off into a pigrow action
-      - name: Expand base image
-        id: expand
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          truncate -s 8G $image
-          echo ", +" | sfdisk -N 2 $image
-          device="$(sudo losetup -fP --show $image)"
-          sudo e2fsck -p -f "${device}p2"
-          sudo resize2fs "${device}p2"
-          sudo losetup -d "$device"
+      - name: Decompress & grow base image
+        id: expand-image
+        uses: ethanjli/pigrow-action@v0.1.0
+        with:
+          image: "${{ steps.download-base.outputs.download }}"
+          mode: to
+          size: 8G
 
       - name: Prepare for running OS build scripts
         run: |
@@ -135,20 +109,19 @@ jobs:
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
         run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
-          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
+          image="${{ steps.expand-image.outputs.destination }}"
+          device="$(sudo ./tools/mount.sh "$image")"
 
-          sudo systemd-nspawn --directory "$sysroot" \
+          sudo systemd-nspawn --image "${device}p2" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
 
-          sudo ./tools/unmount.sh "$device" "$sysroot"
+          sudo ./tools/unmount.sh "$device"
 
       - name: Prepare to run remaining OS build scripts in a booted VM
         id: prepare-vm
         run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
+          image="${{ steps.expand-image.outputs.destination }}"
           sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
           device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
 
@@ -172,9 +145,12 @@ jobs:
       # error "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of
       # cgroups results in error "failed to start daemon: Devices cgroup isn't mounted", probably
       # because systemd-nspawn makes cgroups read-only while Docker needs to manipulate cgroups).
+      # TODO: decompose bookworm-compatible raspi3b dtb generation and qemu booting into a script
+      # used by a GitHub Action; also inject a service, defaulting to a service which just shuts
+      # down after boot has finished
       - name: Run OS build scripts in a booted VM
         run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
+          image="${{ steps.expand-image.outputs.destination }}"
           qemu-system-aarch64 -nographic \
             -machine raspi3b -dtb ${{ steps.prepare-vm.outputs.dtb }} \
             -cpu cortex-a72 -smp 4 -m 1G \
@@ -185,32 +161,30 @@ jobs:
 
       - name: Clean up after VM boot
         run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
-          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
+          image="${{ steps.expand-image.outputs.destination }}"
+          device="$(sudo ./tools/mount.sh "$image")"
 
-          sudo systemd-nspawn --directory "$sysroot" \
+          sudo systemd-nspawn --image "${device}p2" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
 
-          sudo ./tools/unmount.sh "$device" "$sysroot"
+          sudo ./tools/unmount.sh "$device"
 
       - name: Prepare for a headless first boot on bare metal
         run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
-          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
+          image="${{ steps.expand-image.outputs.destination }}"
+          device="$(sudo ./tools/mount.sh "$image")"
 
-          sudo systemd-nspawn --directory "$sysroot" \
+          sudo systemd-nspawn --image "${device}p2" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
             /run/os-setup/ci-pre-headless-boot.sh
 
-          sudo ./tools/unmount.sh "$device" "$sysroot"
+          sudo ./tools/unmount.sh "$device"
 
       - name: Shrink the OS image
         uses: ethanjli/pishrink-action@v0.1.1
         with:
-          image: ${{ steps.download-base.outputs.mountable_image }}
+          image: ${{ steps.expand-image.outputs.destination }}
           destination: ${{ env.OUTPUT_IMAGE_NAME }}.img
           compress: gzip
           compress-parallel: true
