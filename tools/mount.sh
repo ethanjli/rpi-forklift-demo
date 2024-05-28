@@ -4,12 +4,14 @@
 image="$1"
 sysroot="$2"
 
-echo "Mounting $image..."
+echo "Mounting $image..." 1>&2
 device="$(losetup -fP --show $image)"
-echo "Mounted to $device!"
+echo "Mounted to $device!" 1>&2
 
-echo "Mounting $device..."
+echo "Mounting $device..." 1>&2
 mkdir -p "$sysroot"
 mount "${device}p2" "$sysroot"
 mount "${device}p1" "$sysroot/boot"
-echo "Mounted to $sysroot!"
+echo "Mounted to $sysroot!" 1>&2
+
+echo $device
