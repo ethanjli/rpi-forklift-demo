@@ -101,7 +101,8 @@ jobs:
 
           sudo systemd-nspawn --image "${device}p2" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
-            su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
+            --user ${{ env.SETUP_USER }}
+            /run/os-setup/setup/setup-unbooted.sh
 
           sudo ./tools/unmount.sh "$device"
 
