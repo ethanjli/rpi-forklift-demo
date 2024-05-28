@@ -2,7 +2,7 @@
 # This script must be run as root.
 
 device="$1"
-sysroot="$2"
+sysroot="${2:-}"
 
 if [ ! -z "$sysroot" ]; then
   echo "Unmounting $sysroot..." 1>&2

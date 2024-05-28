@@ -2,7 +2,7 @@
 # This script must be run as root.
 
 image="$1"
-sysroot="$2"
+sysroot="${2:-}"
 
 echo "Mounting $image..." 1>&2
 device="$(losetup -fP --show $image)"
