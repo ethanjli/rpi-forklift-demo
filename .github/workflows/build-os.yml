@@ -71,31 +71,18 @@ jobs:
           echo "RPi OS image URL: $IMAGE_URL"
           echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
 
-      - name: Set up base image caching
-        uses: actions/cache@v4
-        with:
-          key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
-          path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
-
-      # TODO: replace this with a GitHub Action for a cached download of a file
-      - name: Download base image
+      - name: Download and cache base image
         id: download-base
-        run: |
-          mkdir -p .cache/base-images
-          cached_download=".cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}"
-          if [ -f "$cached_download" ]; then
-          echo "Using cached image download at $cached_download..."
-          else
-            echo "Downloading ${{ steps.rpi-os-image.outputs.image_url }} to $cached_download..."
-            curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
-          fi
-          echo "download=$cached_download" >> $GITHUB_OUTPUT
+        uses: valadaptive/download-file-action@v0.1.0
+        with:
+          url: ${{ steps.rpi-os-image.outputs.image_url }}
+          destination: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
 
       - name: Decompress & grow base image
         id: expand-image
         uses: ethanjli/pigrow-action@v0.1.0
         with:
-          image: "${{ steps.download-base.outputs.download }}"
+          image: ${{ steps.download-base.outputs.destination }}
           mode: to
           size: 8G
 
