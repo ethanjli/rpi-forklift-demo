@@ -91,7 +91,7 @@ jobs:
             curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
           fi
 
-          tmpfile="$(mktemp)"
+          tmpfile="$(mktemp os-image.XXXXXXX)"
           mime="$(file -b --mime-type "$cached_download")"
           case "$mime" in
             application/octet-stream)
