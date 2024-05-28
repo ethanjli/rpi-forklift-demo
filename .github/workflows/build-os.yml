@@ -136,7 +136,7 @@ jobs:
       - name: Run OS build scripts in an unbooted container
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
           device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
 
           sudo systemd-nspawn --directory "$sysroot" \
@@ -149,7 +149,7 @@ jobs:
         id: prepare-vm
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
           device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
 
           sudo systemd-nspawn --directory "$sysroot" \
@@ -186,7 +186,7 @@ jobs:
       - name: Clean up after VM boot
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
           device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
 
           sudo systemd-nspawn --directory "$sysroot" \
@@ -198,7 +198,7 @@ jobs:
       - name: Prepare for a headless first boot on bare metal
         run: |
           image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="$(mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
+          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
           device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
 
           sudo systemd-nspawn --directory "$sysroot" \
