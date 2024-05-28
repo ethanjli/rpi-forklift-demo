@@ -9,6 +9,7 @@ device="$(losetup -fP --show $image)"
 echo "Mounted to $device!" 1>&2
 
 if [ -z "$sysroot" ]; then
+  echo $device
   exit 0
 fi
 
