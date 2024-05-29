@@ -86,24 +86,21 @@ jobs:
           mode: to
           size: 8G
 
-      - name: Prepare for running OS build scripts
-        run: |
-          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
-
       # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
       # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
       # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
-        run: |
-          image="${{ steps.expand-image.outputs.destination }}"
-          device="$(sudo ./tools/mount.sh "$image")"
-
-          sudo systemd-nspawn --image "${device}p2" \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
-
-          sudo ./tools/unmount.sh "$device"
+        uses: ethanjli/pinspawn@v0.1.0
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          user: ${{ env.SETUP_USER }}
+          args: >
+            --bind "$(pwd)"/os-setup:/run/os-setup
+            --machine unbooted-container
+          run: |
+            export DEBIAN_FRONTEND=noninteractive
+            /run/os-setup/setup/setup-unbooted.sh
 
       - name: Prepare to run remaining OS build scripts in a booted VM
         id: prepare-vm
@@ -114,17 +111,22 @@ jobs:
 
           sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
+            --machine unbooted-container
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           sudo cp -r $sysroot/boot /run/vm-boot
           sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/tools:/run/tools \
             --bind /run/vm-boot:/run/vm-boot \
+            --machine unbooted-container
             /run/tools/build-custom-dtb.sh \
               /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
               /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
           echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
 
           sudo ./tools/unmount.sh "$device" "$sysroot"
+
+      - name: Prepare to run QEMU VM
+        run: sudo apt-get install qemu-system-aarch64
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
@@ -153,20 +155,35 @@ jobs:
 
           sudo systemd-nspawn --image "${device}p2" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
+            --machine unbooted-container
             /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
 
           sudo ./tools/unmount.sh "$device"
 
       - name: Prepare for a headless first boot on bare metal
-        run: |
-          image="${{ steps.expand-image.outputs.destination }}"
-          device="$(sudo ./tools/mount.sh "$image")"
+        uses: ethanjli/pinspawn@v0.1.0
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          run: |
+            # Change default settings for the SD card to enable headless & keyboardless first boot
+            # Note: we could change the username by making a `/boot/userconf.txt` file with the new
+            # username and an encrypted representation of the password (and un-disabling and
+            # unmasking `userconfig.service`), but we don't need to do that for now.
+            # See https://github.com/RPi-Distro/userconf-pi/blob/bookworm/userconf-service and
+            # https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-a-user
+            # and the "firstrun"-related and "cloudinit"-related lines of
+            # https://github.com/raspberrypi/rpi-imager/blob/qml/src/OptionsPopup.qml and
+            # the RPi SD card image's `/usr/lib/raspberrypi-sys-mods/firstboot` and
+            # `/usr/lib/raspberrypi-sys-mods/imager_custom` scripts
+            echo "pi:copepode" | chpasswd
+            sed -i -e "s~^XKBLAYOUT=.*~XKBLAYOUT=\"us\"~" /etc/default/keyboard
+            systemctl disable userconfig.service
 
-          sudo systemd-nspawn --image "${device}p2" \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-pre-headless-boot.sh
-
-          sudo ./tools/unmount.sh "$device"
+            # This is needed to have the login prompt on tty1 (so that a user with a keyboard can
+            # log in without switching away from the default tty), because we disabled
+            # userconfig.service. See
+            # https://forums.raspberrypi.com/viewtopic.php?p=2032694#p2032694
+            systemctl enable getty@tty1
 
       - name: Shrink the OS image
         uses: ethanjli/pishrink-action@v0.1.2
