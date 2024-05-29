@@ -95,11 +95,10 @@ jobs:
         with:
           image: ${{ steps.expand-image.outputs.destination }}
           user: ${{ env.SETUP_USER }}
-          args: >
-            --bind "$(pwd)"/os-setup:/run/os-setup
-            --machine unbooted-container
+          args: --bind "$(pwd)"/os-setup:/run/os-setup
           run: |
             export DEBIAN_FRONTEND=noninteractive
+            echo "Running setup scripts..."
             /run/os-setup/setup/setup-unbooted.sh
 
       - name: Prepare to run remaining OS build scripts in a booted VM
@@ -111,13 +110,11 @@ jobs:
 
           sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
-            --machine unbooted-container
             /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
           sudo cp -r $sysroot/boot /run/vm-boot
           sudo systemd-nspawn --directory "$sysroot" \
             --bind "$(pwd)"/tools:/run/tools \
             --bind /run/vm-boot:/run/vm-boot \
-            --machine unbooted-container
             /run/tools/build-custom-dtb.sh \
               /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
               /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
@@ -155,7 +152,6 @@ jobs:
 
           sudo systemd-nspawn --image "${device}p2" \
             --bind "$(pwd)"/os-setup:/run/os-setup \
-            --machine unbooted-container
             /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
 
           sudo ./tools/unmount.sh "$device"
