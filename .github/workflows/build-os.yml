@@ -91,7 +91,7 @@ jobs:
       # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
-        uses: ethanjli/pinspawn@v0.1.0
+        uses: ethanjli/pinspawn-action@v0.1.1
         with:
           image: ${{ steps.expand-image.outputs.destination }}
           user: ${{ env.SETUP_USER }}
@@ -161,7 +161,7 @@ jobs:
           sudo ./tools/unmount.sh "$device"
 
       - name: Prepare for a headless first boot on bare metal
-        uses: ethanjli/pinspawn@v0.1.0
+        uses: ethanjli/pinspawn-action@v0.1.1
         with:
           image: ${{ steps.expand-image.outputs.destination }}
           run: |
