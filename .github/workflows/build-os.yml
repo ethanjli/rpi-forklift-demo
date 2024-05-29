@@ -73,7 +73,7 @@ jobs:
 
       - name: Download and cache base image
         id: download-base
-        uses: valadaptive/download-file-action@v0.1.0
+        uses: ethanjli/cached-download-action@v0.1.0
         with:
           url: ${{ steps.rpi-os-image.outputs.image_url }}
           destination: /tmp/${{ steps.rpi-os-image.outputs.image_filename }}
