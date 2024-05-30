@@ -73,7 +73,7 @@ jobs:
 
       - name: Download and cache base image
         id: download-base
-        uses: ethanjli/cached-download-action@v0.1.0
+        uses: ethanjli/cached-download-action@v0.1.1
         with:
           url: ${{ steps.rpi-os-image.outputs.image_url }}
           destination: /tmp/${{ steps.rpi-os-image.outputs.image_filename }}
@@ -101,29 +101,13 @@ jobs:
             echo "Running setup scripts..."
             /run/os-setup/setup/setup-unbooted.sh
 
-      - name: Prepare to run remaining OS build scripts in a booted VM
-        id: prepare-vm
-        run: |
-          image="${{ steps.expand-image.outputs.destination }}"
-          sysroot="$(sudo mktemp -d --tmpdir=/mnt sysroot.XXXXXXX)"
-          device="$(sudo ./tools/mount.sh "$image" "$sysroot")"
-
-          sudo systemd-nspawn --directory "$sysroot" \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
-          sudo cp -r $sysroot/boot /run/vm-boot
-          sudo systemd-nspawn --directory "$sysroot" \
-            --bind "$(pwd)"/tools:/run/tools \
-            --bind /run/vm-boot:/run/vm-boot \
-            /run/tools/build-custom-dtb.sh \
-              /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
-              /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
-          echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
-
-          sudo ./tools/unmount.sh "$device" "$sysroot"
-
-      - name: Prepare to run QEMU VM
-        run: sudo apt-get install qemu-system-aarch64
+      - name: Copy the setup scripts into the image to run remaining OS build scripts in a booted VM
+        uses: ethanjli/pinspawn-action@v0.1.2
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          args: --bind "$(pwd)"/os-setup:/run/os-setup
+          run: |
+            sudo cp -r /run/os-setup /usr/lib/os-setup
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
@@ -131,30 +115,23 @@ jobs:
       # error "Failed to initialize nft: Protocol not supported"; in bookworm Docker's use of
       # cgroups results in error "failed to start daemon: Devices cgroup isn't mounted", probably
       # because systemd-nspawn makes cgroups read-only while Docker needs to manipulate cgroups).
-      # TODO: decompose bookworm-compatible raspi3b dtb generation and qemu booting into a script
-      # used by a GitHub Action; also inject a service, defaulting to a service which just shuts
-      # down after boot has finished
       - name: Run OS build scripts in a booted VM
-        run: |
-          image="${{ steps.expand-image.outputs.destination }}"
-          qemu-system-aarch64 -nographic \
-            -machine raspi3b -dtb ${{ steps.prepare-vm.outputs.dtb }} \
-            -cpu cortex-a72 -smp 4 -m 1G \
-            -kernel /run/vm-boot/kernel8.img \
-            -drive file=$image,if=sd,format=raw,index=0,media=disk \
-            -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
-            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
+        uses: ethanjli/piqemu-action@v0.1.0
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          machine: rpi-3b+
+          user: ${{ env.SETUP_USER }}
+          shell: /usr/lib/os-setup/setup-in-vm.sh
 
-      - name: Clean up after VM boot
-        run: |
-          image="${{ steps.expand-image.outputs.destination }}"
-          device="$(sudo ./tools/mount.sh "$image")"
-
-          sudo systemd-nspawn --image "${device}p2" \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
-
-          sudo ./tools/unmount.sh "$device"
+      - name: Copy the setup scripts into the image to run remaining OS build scripts in a booted VM
+        uses: ethanjli/pinspawn-action@v0.1.2
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          user: ${{ env.SETUP_USER }}
+          args: --bind "$(pwd)"/os-setup:/run/os-setup
+          run: |
+            sudo rm -rf /usr/lib/os-setup
+            /run/os-setup/setup/cleanup.sh
 
       - name: Prepare for a headless first boot on bare metal
         uses: ethanjli/pinspawn-action@v0.1.1
