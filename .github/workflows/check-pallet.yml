@@ -31,7 +31,10 @@ jobs:
 
       - name: Run Forklift checks
         run: |
-          forklift dev plt cache-all
+          # FIXME: dev plt cache-all should first cache repos instead of just failing with an error
+          # that repos are not yet cached. Also, check should automatically cache needed
+          # dependencies.
+          forklift dev plt cache-repo
           forklift dev plt check
 
       - name: Make Forklift deployment plan
