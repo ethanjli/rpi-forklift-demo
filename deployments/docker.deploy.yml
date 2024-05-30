@@ -1,0 +1,3 @@
+package: github.com/PlanktoScope/device-pkgs/core/host/docker
+features:
+  - start-before-network-online

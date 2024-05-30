@@ -1,0 +1,11 @@
+package:
+  description: A hello-world demo
+  maintainers:
+    - name: Ethan Li
+      email: lietk12@gmail.com
+  license: Apache-2.0
+  sources:
+    - https://github.com/traefik/whoami
+
+deployment:
+  compose-files: [compose.yml]

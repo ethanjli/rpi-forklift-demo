@@ -1,0 +1,36 @@
+name: check-pallet
+
+on:
+  push:
+    branches:
+      - main
+      - edge
+      - beta
+      - stable
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        forklift-version: [0.5.3]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Forklift
+        uses: PlanktoScope/setup-forklift@v1
+        with:
+          version: ${{ matrix.forklift-version }}
+
+      - name: Run Forklift checks
+        run: forklift dev plt check
+
+      - name: Make Forklift deployment plan
+        run: forklift dev plt plan

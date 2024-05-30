@@ -1,0 +1,6 @@
+forklift-version: v0.7.2-alpha.6
+
+pallet:
+  path: github.com/ethanjli/rpi-forklift-demo
+  description: Example deployment of packages for a demo of Forklift on the Raspberry Pi
+  readme-file: README.md

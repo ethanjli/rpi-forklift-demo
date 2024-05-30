@@ -1,0 +1,14 @@
+package:
+  description: A custom domain for dnsmasq
+  maintainers:
+    - name: Ethan Li
+      email: lietk12@gmail.com
+  license: Apache-2.0
+  sources:
+    - https://github.com/ethanjli/rpi-forklift-demo
+
+deployment:
+  provides:
+    file-exports:
+      - description: "File to set custom domain to 'demo'"
+        target: overlays/etc/custom-domain
