@@ -71,100 +71,43 @@ jobs:
           echo "RPi OS image URL: $IMAGE_URL"
           echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
 
-      - name: Set up base image caching
-        uses: actions/cache@v4
-        with:
-          key: base-image-${{ steps.rpi-os-image.outputs.image_url }}
-          path: .cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}
-
-      # TODO: split this off into a GitHub Action, with a parameterized cache path and better
-      # handling of different archive formats
-      - name: Download & decompress base image
+      - name: Download and cache base image
         id: download-base
-        run: |
-          mkdir -p .cache/base-images
-          cached_download=".cache/base-images/${{ steps.rpi-os-image.outputs.image_filename }}"
-          if [ -f "$cached_download" ]; then
-          echo "Using cached image download at $cached_download..."
-          else
-            echo "Downloading ${{ steps.rpi-os-image.outputs.image_url }} to $cached_download..."
-            curl -o "$cached_download" "${{ steps.rpi-os-image.outputs.image_url }}"
-          fi
+        uses: ethanjli/cached-download-action@v0.1.1
+        with:
+          url: ${{ steps.rpi-os-image.outputs.image_url }}
+          destination: /tmp/${{ steps.rpi-os-image.outputs.image_filename }}
 
-          tmpfile="$(mktemp -u)"
-          mime="$(file -b --mime-type "$cached_download")"
-          case "$mime" in
-            application/octet-stream)
-              echo "Copying $cached_download to $tmpfile..."
-              cp "$cached_download" "$tmpfile"
-              ;;
-            application/gzip | application/x-gzip)
-              echo "Extracting $cached_download to $tmpfile..."
-              gunzip -c "$cached_download" > "$tmpfile"
-              ;;
-            application/x-xz)
-              echo "Extracting $cached_download to $tmpfile..."
-              unxz -c "$cached_download" > "$tmpfile"
-              ;;
-            *)
-              echo -e "\033[0;31m### Error: Unknown image mimetype: $mime\033[0m"
-              return 1
-              ;;
-          esac
-          echo "mountable_image=$tmpfile" >> $GITHUB_OUTPUT
-
-      # TODO: split this off into a pigrow action
-      - name: Expand & mount base image
-        id: expand-and-mount
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          truncate -s 8G $image
-          echo ", +" | sfdisk -N 2 $image
-          device="$(sudo losetup -fP --show $image)"
-          sudo e2fsck -p -f "${device}p2"
-          sudo resize2fs "${device}p2"
-
-          sudo mkdir -p /mnt/img-build
-          sudo mount "${device}p2" /mnt/img-build
-          sudo mount "${device}p1" /mnt/img-build/boot
-          echo "image_sysroot=/mnt/img-build" >> $GITHUB_OUTPUT
-          echo "image_device=$device" >> $GITHUB_OUTPUT
-
-      - name: Prepare for running OS build scripts
-        run: |
-          sudo apt-get install systemd-container qemu-user-static binfmt-support qemu-system-aarch64
+      - name: Decompress & grow base image
+        id: expand-image
+        uses: ethanjli/pigrow-action@v0.1.1
+        with:
+          image: ${{ steps.download-base.outputs.destination }}
+          mode: to
+          size: 8G
 
       # Note: for performance reasons, we run most setup steps in a systemd-nspawn container. We
       # could boot it if we wanted (and it works fine for setup on a -lite base image), but for
       # some reason setup doesn't work on a -desktop base image (systemd calls during setup all fail
       # with a "Transport endpoint is not connected" error)
       - name: Run OS build scripts in an unbooted container
-        run: |
-          sudo systemd-nspawn --directory ${{ steps.expand-and-mount.outputs.image_sysroot }} \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            su - ${{ env.SETUP_USER }} /run/os-setup/setup/setup-unbooted.sh
+        uses: ethanjli/pinspawn-action@v0.1.1
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          user: ${{ env.SETUP_USER }}
+          args: --bind "$(pwd)"/os-setup:/run/os-setup
+          run: |
+            export DEBIAN_FRONTEND=noninteractive
+            echo "Running setup scripts..."
+            /run/os-setup/setup/setup-unbooted.sh
 
-      - name: Prepare to run remaining OS build scripts in a booted VM
-        id: prepare-vm
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot=${{ steps.expand-and-mount.outputs.image_sysroot }}
-
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-pre-vm-boot.sh ${{ env.SETUP_USER }}
-          sudo cp -r $sysroot/boot /run/vm-boot
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/tools:/run/tools \
-            --bind /run/vm-boot:/run/vm-boot \
-            /run/tools/build-custom-dtb.sh \
-              /run/vm-boot/bcm2710-rpi-3-b-plus.dtb \
-              /run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb
-
-          sudo umount "$sysroot/boot"
-          sudo umount "$sysroot"
-          sudo losetup -d "${{ steps.expand-and-mount.outputs.image_device }}"
-          echo "dtb=/run/vm-boot/bcm2710-rpi-3-b-plus-qemu.dtb" >> $GITHUB_OUTPUT
+      - name: Copy the setup scripts into the image to run remaining OS build scripts in a booted VM
+        uses: ethanjli/pinspawn-action@v0.1.2
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          args: --bind "$(pwd)"/os-setup:/run/os-setup
+          run: |
+            sudo cp -r /run/os-setup /usr/lib/os-setup
 
       # Note: we need to boot the OS in a VM rather than a systemd-nspawn container because
       # `docker.service` can't start properly in the container due to its interaction with
@@ -173,44 +116,55 @@ jobs:
       # cgroups results in error "failed to start daemon: Devices cgroup isn't mounted", probably
       # because systemd-nspawn makes cgroups read-only while Docker needs to manipulate cgroups).
       - name: Run OS build scripts in a booted VM
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          qemu-system-aarch64 -nographic \
-            -machine raspi3b -dtb ${{ steps.prepare-vm.outputs.dtb }} \
-            -cpu cortex-a72 -smp 4 -m 1G \
-            -kernel /run/vm-boot/kernel8.img \
-            -drive file=$image,if=sd,format=raw,index=0,media=disk \
-            -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-net,netdev=net0 \
-            -append "rw earlyprintk loglevel=8 console=ttyAMA0,115200 dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1"
+        uses: ethanjli/piqemu-action@v0.1.0
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          machine: rpi-3b+
+          user: ${{ env.SETUP_USER }}
+          shell: /usr/lib/os-setup/setup/setup-in-vm.sh
 
-      - name: Clean up after VM boot and prepare for a headless first boot on bare metal
-        run: |
-          image="${{ steps.download-base.outputs.mountable_image }}"
-          sysroot="/mnt/img-build"
-          device="$(sudo losetup -fP --show "$image")"
-          sudo mount "${device}p2" "$sysroot"
-          sudo mount "${device}p1" "$sysroot/boot"
+      - name: Copy the setup scripts into the image to run remaining OS build scripts in a booted VM
+        uses: ethanjli/pinspawn-action@v0.1.2
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          user: ${{ env.SETUP_USER }}
+          args: --bind "$(pwd)"/os-setup:/run/os-setup
+          run: |
+            sudo rm -rf /usr/lib/os-setup
+            /run/os-setup/setup/cleanup.sh
 
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-post-vm-boot.sh ${{ env.SETUP_USER }}
-          sudo systemd-nspawn --directory $sysroot \
-            --bind "$(pwd)"/os-setup:/run/os-setup \
-            /run/os-setup/ci-pre-headless-boot.sh
+      - name: Prepare for a headless first boot on bare metal
+        uses: ethanjli/pinspawn-action@v0.1.1
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          run: |
+            # Change default settings for the SD card to enable headless & keyboardless first boot
+            # Note: we could change the username by making a `/boot/userconf.txt` file with the new
+            # username and an encrypted representation of the password (and un-disabling and
+            # unmasking `userconfig.service`), but we don't need to do that for now.
+            # See https://github.com/RPi-Distro/userconf-pi/blob/bookworm/userconf-service and
+            # https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-a-user
+            # and the "firstrun"-related and "cloudinit"-related lines of
+            # https://github.com/raspberrypi/rpi-imager/blob/qml/src/OptionsPopup.qml and
+            # the RPi SD card image's `/usr/lib/raspberrypi-sys-mods/firstboot` and
+            # `/usr/lib/raspberrypi-sys-mods/imager_custom` scripts
+            echo "pi:copepode" | chpasswd
+            sed -i -e "s~^XKBLAYOUT=.*~XKBLAYOUT=\"us\"~" /etc/default/keyboard
+            systemctl disable userconfig.service
 
-          sudo umount "$sysroot/boot"
-          sudo umount "$sysroot"
-          sudo e2fsck -p -f "${device}p2"
-          sudo losetup -d "$device"
+            # This is needed to have the login prompt on tty1 (so that a user with a keyboard can
+            # log in without switching away from the default tty), because we disabled
+            # userconfig.service. See
+            # https://forums.raspberrypi.com/viewtopic.php?p=2032694#p2032694
+            systemctl enable getty@tty1
 
-      # TODO: split this off into a pishrink action
-      - name: Run pishrink
-        run: |
-          wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
-          chmod a+x pishrink.sh
-          sudo ./pishrink.sh -za \
-            ${{ steps.download-base.outputs.mountable_image }} \
-            ${{ env.OUTPUT_IMAGE_NAME }}.img
+      - name: Shrink the OS image
+        uses: ethanjli/pishrink-action@v0.1.2
+        with:
+          image: ${{ steps.expand-image.outputs.destination }}
+          destination: ${{ env.OUTPUT_IMAGE_NAME }}.img
+          compress: gzip
+          compress-parallel: true
 
       - name: Upload image to Job Artifacts
         uses: actions/upload-artifact@v4
