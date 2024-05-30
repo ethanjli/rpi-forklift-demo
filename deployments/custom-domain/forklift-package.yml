@@ -12,3 +12,6 @@ deployment:
     file-exports:
       - description: "File to set custom domain to 'demo'"
         target: overlays/etc/custom-domain
+      - description:
+          Hosts file snippet for machine name with custom domain on PlanktoScope IP addresses
+        target: overlays/etc/hosts-templates.d/40-planktoscope-custom-domain-machine-name
