@@ -55,53 +55,20 @@ This VM image comes the Forklift pallet at the latest commit from the `main` bra
 [github.com/ethanjli/pallet-example-minimal](https://github.com/ethanjli/pallet-example-minimal),
 as a minimal demo. This guide will show you how to switch to a different pallet, at the latest
 commit from the `main` branch of
-[github.com/ethanjli/pallet-example-exports](https://github.com/ethanjli/pallet-example-exports)
-and apply it to your VM in order to add a few sysexts+confexts to your VM, but you can make
-your own pallet and use it instead.
+[github.com/ethanjli/rpi-forklift-demo](https://github.com/ethanjli/rpi-forklift-demo)
+(i.e. the repository which contains the `README.md` file you're reading right now)
+and apply it to your VM.
 
 To clone and stage the pallet, just run:
 
 ```
-forklift pallet switch github.com/ethanjli/pallet-example-exports@main
+forklift pallet switch github.com/ethanjli/rpi-forklift-demo@main
 ```
 
 (Note: if you hate typing, then you can replace `pallet` with `plt` - that's three entire keypresses
 saved!!)
 
-If you run `systemd-sysext status`, you can confirm that there are not yet any sysexts on your
-system. You can also confirm that the `docker`, `dive`, `crane`, and `nvim` commands do not
-exist yet, by trying to run those commands.
-
-Next, you should reboot. Then you will see new system extensions if you run
-`systemd-sysext status`. You will also see that:
-
-- A new service named `hello-world-extension` ran successfully, if you check its status with
-  `systemctl status hello-world-extension.service`; and a script at
-  `/usr/bin/hello-world-extension` now exists. This script and this systemd service are provided by
-  the `hello-world` extension exported by the Forklift pallet
-  `github.com/ethanjli/pallet-example-exports`.
-- The `docker` systemd service is now running, if you check its status with
-  `systemctl status docker.service`.
-- If you run `sudo docker image pull alpine:latest` and `sudo docker image ls`, you will have pulled
-  the Docker container image for `alpine:latest`; similarly, you can use Docker however you want.
-- If you run `sudo dive alpine:latest`, you can use [dive](https://github.com/wagoodman/dive)
-  to browse/inspect the contents/structure of the `alpine:latest` Docker container image.
-- If you run `crane export alpine:latest - | tar -tvf - | less`, you can use
-  [crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md)
-  to list the files in the `alpine:latest` Docker container image.
-- If you run `nvim`, you can use [neovim](https://github.com/neovim/neovim); furthermore, if you
-  enter the `:help nvim` command inside Neovim, you will see help text which is only available
-  because the system extension which provides neovim via
-  [an Alpine Linux package](https://pkgs.alpinelinux.org/package/edge/community/x86_64/neovim)
-  also includes the
-  [neovim-doc package](https://pkgs.alpinelinux.org/package/edge/community/x86_64/neovim-doc);
-  files from that package are not at their usual location
-  [for Alpine Linux](https://pkgs.alpinelinux.org/contents?name=neovim-doc), which you can confirm
-  by running
-  `ls /usr/share/nvim/runtime/doc`; instead, you can find them by running
-  `ls /usr/local/neovim/usr/share/nvim/runtime/doc`. And if you run
-  `readelf -a /usr/local/neovim/usr/bin/nvim | grep -i musl`, you can see that `nvim` was compiled
-  for dynamic library loading with musl rather than glibc.
+TODO
 
 You can switch to another pallet from GitHub/GitLab/etc. using the `forklift pallet switch` command;
 it will totally replace the contents of `~/.local/share/forklift/pallet` and create a new staged
