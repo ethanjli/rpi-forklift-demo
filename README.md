@@ -68,6 +68,12 @@ forklift pallet switch github.com/ethanjli/rpi-forklift-demo@main
 (Note: if you hate typing, then you can replace `pallet` with `plt` - that's three entire keypresses
 saved!!)
 
+This pallet modifies the OS's configuration files, so you should reboot to apply its changes:
+
+```
+sudo reboot
+```
+
 TODO
 
 You can switch to another pallet from GitHub/GitLab/etc. using the `forklift pallet switch` command;
