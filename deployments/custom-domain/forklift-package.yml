@@ -21,3 +21,5 @@ deployment:
           "Drop-in Cockpit origins template list for access via the hostname with a custom
           domain, e.g. 'raspberrypi.demo'"
         target: overlays/etc/cockpit/origins-templates.d/20-custom-domain-hostname
+      - description: Drop-in hostapd config fragment for a constant hostname
+        target: overlays/etc/hostapd/hostapd.conf-templates.d/20-ssid.conf
