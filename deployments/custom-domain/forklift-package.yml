@@ -15,3 +15,5 @@ deployment:
       - description:
           Hosts file snippet for machine name with custom domain on PlanktoScope IP addresses
         target: overlays/etc/hosts-templates.d/40-planktoscope-custom-domain-machine-name
+      - description: "Template for generating a hostname with prefix 'pi-'"
+        target: overlays/etc/hostname-template
