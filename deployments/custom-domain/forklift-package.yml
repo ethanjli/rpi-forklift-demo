@@ -17,3 +17,7 @@ deployment:
         target: overlays/etc/hosts-templates.d/40-planktoscope-custom-domain-machine-name
       - description: "Template for generating a hostname with prefix 'pi-'"
         target: overlays/etc/hostname-template
+      - description:
+          "Drop-in Cockpit origins template list for access via the hostname with a custom
+          domain, e.g. 'raspberrypi.demo'"
+        target: overlays/etc/cockpit/origins-templates.d/20-custom-domain-hostname
