@@ -9,3 +9,8 @@ package:
 
 deployment:
   compose-files: [compose.yml]
+  provides:
+    listeners:
+      - description: Web server for all HTTP requests
+        port: 80
+        protocol: tcp
