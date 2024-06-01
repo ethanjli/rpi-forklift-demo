@@ -1,0 +1,25 @@
+package:
+  description: A custom domain for dnsmasq
+  maintainers:
+    - name: Ethan Li
+      email: lietk12@gmail.com
+  license: Apache-2.0
+  sources:
+    - https://github.com/ethanjli/rpi-forklift-demo
+
+deployment:
+  provides:
+    file-exports:
+      - description: "File to set custom domain to 'demo'"
+        target: overlays/etc/custom-domain
+      - description:
+          Hosts file snippet for machine name with custom domain on PlanktoScope IP addresses
+        target: overlays/etc/hosts-templates.d/40-planktoscope-custom-domain-machine-name
+      - description: "Template for generating a hostname with prefix 'pi-'"
+        target: overlays/etc/hostname-template
+      - description:
+          "Drop-in Cockpit origins template list for access via the hostname with a custom
+          domain, e.g. 'raspberrypi.demo'"
+        target: overlays/etc/cockpit/origins-templates.d/20-custom-domain-hostname
+      - description: Drop-in hostapd config fragment for a constant hostname
+        target: overlays/etc/hostapd/hostapd.conf-templates.d/20-ssid.conf

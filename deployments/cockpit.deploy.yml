@@ -1,0 +1,5 @@
+package: github.com/PlanktoScope/device-pkgs/core/host/cockpit
+features:
+  - allow-unencrypted
+  - allow-origins-planktoscope-static-ips
+  - allow-origins-templated-mdns-hostname

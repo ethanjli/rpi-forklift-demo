@@ -1,0 +1,4 @@
+# These custom domain names are provided for local access when mDNS is not supported:
+http://{hostname}.{custom-domain}
+http://{hostname}.{custom-domain}:9090
+
