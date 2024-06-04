@@ -12,32 +12,22 @@ config_files_root=$(dirname $(realpath $BASH_SOURCE))
 # `newgrp docker` in the script to avoid the need for `sudo -E here`, but it doesn't work in the
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
-if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
-  echo "Warning: docker couldn't start normally during boot, so we'll instead try to start it with iptables disabled..."
-  # If Docker couldn't start by itself because we can't use iptables (because we're in a
-  # systemd-nspawn container running ARM binaries with QEMU on a non-ARM host), we'll try to start
-  # it manually ourselves with iptables disabled:
-  sudo mkdir -p /etc/systemd/system/docker.service.d
-  override_config="$(sudo mktemp --tmpdir=/etc/systemd/system/docker.service.d --suffix=.conf setup-XXXXXXX)"
-  sudo cp "$config_files_root/dockerd-override.conf" "$override_config"
-  sudo chmod a+r "$override_config"
-  cat "$override_config"
-  ls -l /etc/systemd/system/docker.service.d
-  sudo systemctl daemon-reload
-  sudo systemctl cat docker.service | cat
-  if ! sudo systemctl start docker.service; then
-    echo "Error: couldn't start docker!"
-    journalctl --no-pager -u docker.service
-    # Note: Docker requires iptables-nft, which won't work if run using qemu-aarch64-static
-    # (see https://github.com/multiarch/qemu-user-static/issues/191 for details), e.g. via a
-    # systemd-nspawn container. But if we run the systemd-nspawn container on an aarch64 host, it
-    # should probably work - so once GitHub rolls out arm64 runner for open-source projects, we may
-    # be able to run booted setup (i.e. with Docker) in a systemd-nspawn container rather than a
-    # QEMU VM; that will probably make the booted setup step much faster.
-    sudo iptables-nft -L || sudo lsmod
-    exit 1
-  fi
-  sudo rm override_config
+if [ -S /var/run/docker.sock ] && \
+  ! sudo -E docker ps 2&>1 > /dev/null && \
+  ! sudo systemctl start docker.socket docker.service
+then
+  echo "Error: couldn't start docker!"
+  journalctl --no-pager -u docker.socket
+  journalctl --no-pager -u docker.service
+  sudo findmnt -lo source,target,fstype,options -t cgroup,cgroup2
+  # Note: Docker requires iptables-nft, which won't work if run using qemu-aarch64-static
+  # (see https://github.com/multiarch/qemu-user-static/issues/191 for details), e.g. via a
+  # systemd-nspawn container. But if we run the systemd-nspawn container on an aarch64 host, it
+  # should probably work - so once GitHub rolls out arm64 runner for open-source projects, we may
+  # be able to run booted setup (i.e. with Docker) in a systemd-nspawn container rather than a
+  # QEMU VM; that will probably make the booted setup step much faster.
+  sudo iptables -L || sudo lsmod
+  exit 1
 fi
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
