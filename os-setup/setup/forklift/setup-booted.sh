@@ -42,6 +42,8 @@ if ! $FORKLIFT stage apply; then
   echo "Warning: the next staged pallet could not be successfully applied. We'll try again on the next boot, since the pallet might require some files which will only be created during the next boot."
   # Reset the "apply-failed" status of the staged pallet to apply:
   forklift stage set-next --no-cache-img "$next_pallet"
+  echo "Caching any images needed on next boot..."
+  $FORKLIFT stage cache-img
 fi
 
 # Prepare to apply the pallet on future boots, too
