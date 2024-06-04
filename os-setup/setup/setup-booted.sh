@@ -32,7 +32,7 @@ function panic {
 
 description="set up OS configuration with Forklift"
 report_starting "$description"
-if $build_scripts_root/forklift/setup-in-vm.sh ; then
+if $build_scripts_root/forklift/setup-booted.sh ; then
   report_finished "$description"
 else
   panic "$description"

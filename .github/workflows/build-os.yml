@@ -101,17 +101,17 @@ jobs:
             echo "Running setup scripts..."
             /run/os-setup/setup/setup-unbooted.sh
 
-      # Note: we need to boot the OS in a VM in order to interact with the Docker daemon.
-      - name: Run OS build scripts in a booted VM
+      # Note: we need to boot the OS in order to interact with the Docker daemon.
+      - name: Run OS build scripts in a booted container
         uses: ethanjli/pinspawn-action@v0.1.3
         with:
           image: ${{ steps.expand-image.outputs.destination }}
           boot: true
           user: ${{ env.SETUP_USER }}
           args: --bind "$(pwd)"/os-setup:/run/os-setup
-          shell: /run/os-setup/setup/setup-in-vm.sh
+          shell: /run/os-setup/setup/setup-booted.sh
 
-      - name: Copy the setup scripts into the image to run remaining OS build scripts in a booted VM
+      - name: Clean up after booted setup
         uses: ethanjli/pinspawn-action@v0.1.3
         with:
           image: ${{ steps.expand-image.outputs.destination }}
