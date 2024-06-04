@@ -21,6 +21,7 @@ if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
   override_config="$(sudo mktemp --tmpdir=/etc/systemd/system/docker.service.d --suffix=.conf setup-XXXXXXX)"
   sudo cp "$config_files_root/dockerd-override.conf" "$override_config"
   sudo systemctl daemon-reload
+  systemctl cat docker.service | cat
   if ! sudo systemctl start docker.service; then
     echo "Error: couldn't start docker!"
     journalctl --no-pager -u docker.service
