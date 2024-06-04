@@ -18,7 +18,12 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 FORKLIFT="forklift"
 if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
   journalctl --no-pager -u docker.service
-  sudo findmnt -lo source,target,fstype,options -t cgroup,cgroup2
+  if ! sudo findmnt -lo source,target,fstype,options -t cgroup,cgroup2 | grep 'cgroup2' > /dev/null; then
+    # This is a workaround for RPi OS bookworm, which appears to mount cgroups v1 in a
+    # systemd-nspawn container instead of mounting cgroups v2; bullseye doesn't have this problem.
+    echo "Warning: for some reason, cgroups v1 is mounted instead of v2! Mounting v2 controllers..."
+    sudo mount -t cgroup2 none /sys/fs/cgroup
+  fi
   $config_files_root/check-docker.sh
   sudo systemctl start docker.service
 fi
