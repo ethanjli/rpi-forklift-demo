@@ -17,9 +17,8 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
 if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
-  journalctl --no-pager -u containerd.service
-  sudo systemctl start docker.service
   journalctl --no-pager -u docker.service
+  sudo systemctl start docker.service
 fi
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
