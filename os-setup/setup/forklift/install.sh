@@ -42,3 +42,10 @@ if ! sudo systemctl start "bind-.local-share-forklift-stages@-home-$USER.service
   echo "Warning: the system's Forklift stage store is not mounted to $USER's Forklift stage store."
   echo "As long as you don't touch the Forklift stage store before the next boot, this is fine."
 fi
+
+# Clone & stage a local pallet
+
+pallet_path="github.com/ethanjli/pallet-example-minimal"
+pallet_version="f2ea1b4"
+forklift plt switch --no-cache-img $pallet_path@$pallet_version
+sudo systemctl mask forklift-apply.service # we'll re-enable it after finishing setup in the VM

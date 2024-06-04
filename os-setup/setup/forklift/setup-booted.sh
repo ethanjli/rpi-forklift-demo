@@ -5,11 +5,7 @@
 
 config_files_root=$(dirname $(realpath $BASH_SOURCE))
 
-# Set up & stage local pallet
-
-pallet_path="github.com/ethanjli/pallet-example-minimal"
-pallet_version="f2ea1b4"
-forklift plt switch --no-cache-img $pallet_path@$pallet_version
+# Prepare to apply the local pallet
 
 # Note: the pi user will only be able to run `forklift stage plan` and `forklift stage cache-img`
 # without root permissions after a reboot, so we may need `sudo -E` here; I had tried running
@@ -17,12 +13,15 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
 if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
+  journalctl --no-pager -u docker.service
   if ! sudo findmnt -lo source,target,fstype,options -t cgroup,cgroup2 | grep 'cgroup2' > /dev/null; then
     # This is a workaround for RPi OS bookworm, which appears to mount cgroups v1 in a
     # systemd-nspawn container instead of mounting cgroups v2; bullseye doesn't have this problem.
     # We need cgroups v2 for Docker to start properly.
     echo "Warning: for some reason, cgroups v1 is mounted instead of v2! Mounting v2 controllers..."
-    sudo mount -t cgroup2 none /sys/fs/cgroup
+    sudo mount -t cgroup2 none /sys/fs/cgroup -o rw
+    sudo findmnt -lo source,target,fstype,options -t cgroup,cgroup2
+    ls -l /sys/fs/cgroup
   fi
   $config_files_root/check-docker.sh
   if ! sudo systemctl start docker.service; then
@@ -36,7 +35,7 @@ if ! docker ps; then
 fi
 
 $FORKLIFT stage plan
-$FORKLIFT stage cache-img
+
 next_pallet="$(basename $(forklift stage locate-bun next))"
 # Applying the staged pallet (i.e. making Docker instantiate all the containers) significantly
 # decreases first-boot time, by up to 30 sec for github.com/PlanktoScope/pallet-standard.
@@ -45,3 +44,6 @@ if ! $FORKLIFT stage apply; then
   # Reset the "apply-failed" status of the staged pallet to apply:
   forklift stage set-next --no-cache-img "$next_pallet"
 fi
+
+# Prepare to apply the pallet on future boots, too
+sudo systemctl unmask forklift-apply.service
