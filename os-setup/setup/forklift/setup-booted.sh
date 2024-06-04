@@ -13,10 +13,18 @@ config_files_root=$(dirname $(realpath $BASH_SOURCE))
 # script here (even though it works after the script finishes, before rebooting):
 FORKLIFT="forklift"
 if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
+  echo "Warning: docker couldn't start normally during boot, so we'll instead try to start it with iptables disabled..."
   # If Docker couldn't start by itself because we can't use iptables (because we're in a
   # systemd-nspawn container running ARM binaries with QEMU on a non-ARM host), we'll try to start
   # it manually ourselves with iptables disabled:
-  if ! sudo /usr/bin/dockerd --iptables=False -H fd:// --containerd=/run/containerd/containerd.sock &; then
+  sudo mkdir -p /etc/systemd/system/docker.service.d
+  override_config="$(sudo mktemp --tmpdir=/etc/systemd/system/docker.service.d --suffix=.conf setup-XXXXXXX)"
+  sudo tee $override_config > /dev/null <<- 'EOF'
+  [Service]
+  ExecStart=/usr/bin/dockerd --iptables=False -H fd:// --containerd=/run/containerd/containerd.sock
+  EOF
+  sudo systemctl daemon-reload
+  if ! sudo systemctl start docker.service; then
     echo "Error: couldn't start docker!"
     journalctl --no-pager -u docker.service
     # Note: Docker requires iptables-nft, which won't work if run using qemu-aarch64-static
@@ -28,6 +36,7 @@ if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
     sudo iptables-nft -L || sudo lsmod
     exit 1
   fi
+  sudo rm override_config
 fi
 if ! docker ps; then
   FORKLIFT="sudo -E forklift"
