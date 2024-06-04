@@ -110,7 +110,6 @@ jobs:
           user: ${{ env.SETUP_USER }}
           args: >
             --bind "$(pwd)"/os-setup:/run/os-setup
-            # Needed for bookworm compatibility:
             systemd.unified_cgroup_hierarchy=1
           shell: /run/os-setup/setup/setup-booted.sh
 
