@@ -19,10 +19,7 @@ if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
   # it manually ourselves with iptables disabled:
   sudo mkdir -p /etc/systemd/system/docker.service.d
   override_config="$(sudo mktemp --tmpdir=/etc/systemd/system/docker.service.d --suffix=.conf setup-XXXXXXX)"
-  sudo tee $override_config > /dev/null <<- EOT
-  [Service]
-  ExecStart=/usr/bin/dockerd --iptables=False -H fd:// --containerd=/run/containerd/containerd.sock
-  EOT
+  sudo cp "$config_files_root/dockerd-override.conf" "$override_config"
   sudo systemctl daemon-reload
   if ! sudo systemctl start docker.service; then
     echo "Error: couldn't start docker!"
