@@ -40,7 +40,7 @@ fi
 
 description="set up network configuration"
 report_starting "$description"
-if $build_scripts_root/networking/configure-in-vm.sh ; then
+if $build_scripts_root/networking/configure-booted.sh ; then
   report_finished "$description"
 else
   panic "$description"
