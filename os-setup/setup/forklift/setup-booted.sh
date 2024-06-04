@@ -24,9 +24,11 @@ if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
     ls -l /sys/fs/cgroup
   fi
   $config_files_root/check-docker.sh
-  if ! sudo systemctl start docker.service; then
+  if ! sudo systemctl start containerd.service docker.service; then
     echo "Error: couldn't start docker!"
+    journalctl --no-pager -u containerd.service
     journalctl --no-pager -u docker.service
+    sudo iptables -L || sudo iptables-nft -L || sudo lsmod
     exit 1
   fi
 fi
