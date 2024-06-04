@@ -113,20 +113,17 @@ jobs:
       # (even though the VM is much much slower) because `docker.socket`/`docker.service` can't
       # start properly in the container due to its use of iptables-nft: Docker's use of
       # iptables/nftables results in error "Failed to initialize nft: Protocol not supported".
+      # iptables/nftables which won't work if run using qemu-aarch64-static (see
+      # https://github.com/multiarch/qemu-user-static/issues/191 for details).
       # Once GitHub makes arm64 runners available to open-source projects, then we can get rid of
       # QEMU and we may be able to successfully start Docker in a systemd-nspawn container.
-      # Also, `docker.socket` needs a working v2 cgroup, and for some reason starting bookworm in
-      # a systemd-nspawn container on the ubuntu-latest (22.04) runner causes systemd to use cgroup
-      # v1 with a reduced surface area instead of v2 with a full surface area (even though this
-      # problem doesn't occur on bullseye!); currently QEMU on ubuntu-24.04 segfaults when I try to
-      # do setup, so that's not an option yet.
       - name: Run OS build scripts in a booted VM
-        #uses: ethanjli/piqemu-action@v0.1.1
-        uses: ethanjli/pinspawn-action@v0.1.4
+        uses: ethanjli/piqemu-action@v0.1.1
+        #uses: ethanjli/pinspawn-action@v0.1.4
         with:
           image: ${{ steps.expand-image.outputs.destination }}
-          #machine: rpi-3b+
-          boot: true
+          machine: rpi-3b+
+          #boot: true
           user: ${{ env.SETUP_USER }}
           shell: /usr/lib/os-setup/setup/setup-booted.sh
 
