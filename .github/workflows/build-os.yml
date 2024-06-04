@@ -26,7 +26,7 @@ on:
 jobs:
   build:
     name: Build image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       OUTPUT_IMAGE_NAME: ${{ inputs.name }}-${{ inputs.base_release_name }}-${{ inputs.arch }}-${{ inputs.base_image_variant }}
       KERNEL_VERSION: 6.1.21

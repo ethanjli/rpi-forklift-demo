@@ -18,7 +18,6 @@ forklift plt switch --no-cache-img $pallet_path@$pallet_version
 FORKLIFT="forklift"
 if [ -S /var/run/docker.sock ] && ! sudo -E docker ps 2&>1 > /dev/null; then
   journalctl --no-pager -u docker.service
-  sudo ls -l /sys/fs/cgroup
   $config_files_root/check-docker.sh
   sudo systemctl start docker.service
 fi
