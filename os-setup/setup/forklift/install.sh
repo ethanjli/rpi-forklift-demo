@@ -8,7 +8,7 @@ config_files_root=$(dirname $(realpath $BASH_SOURCE))
 
 # Install Forklift
 
-forklift_version="0.7.2-alpha.6"
+forklift_version="0.7.3"
 
 arch="$(dpkg --print-architecture | sed -e 's/armhf/arm/' -e 's/aarch64/arm64/')"
 curl -L "https://github.com/PlanktoScope/forklift/releases/download/v$forklift_version/forklift_${forklift_version}_linux_${arch}.tar.gz" \
@@ -42,3 +42,14 @@ if ! sudo systemctl start "bind-.local-share-forklift-stages@-home-$USER.service
   echo "Warning: the system's Forklift stage store is not mounted to $USER's Forklift stage store."
   echo "As long as you don't touch the Forklift stage store before the next boot, this is fine."
 fi
+
+# Clone & stage a local pallet
+
+pallet_path="github.com/ethanjli/pallet-example-minimal"
+pallet_version="f2ea1b4"
+forklift --stage-store /var/lib/forklift/stages plt switch --no-cache-img $pallet_path@$pallet_version
+sudo systemctl mask forklift-apply.service # we'll re-enable it after finishing setup in the VM
+
+# Pre-cache container images without Docker
+sudo apt-get -y install -o Dpkg::Progress-Fancy=0 skopeo parallel
+forklift plt ls-img | parallel --line-buffer "$config_files_root/precache-image.sh"
