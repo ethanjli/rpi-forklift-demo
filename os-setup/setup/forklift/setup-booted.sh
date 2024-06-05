@@ -36,7 +36,6 @@ fi
 # Move container images used by the local pallet from the pre-cache to the Docker daemon
 forklift plt ls-img | parallel --line-buffer "$config_files_root/transfer-precached-image.sh"
 
-$FORKLIFT stage plan
 # Applying the staged pallet (i.e. making Docker instantiate all the containers) significantly
 # decreases first-boot time, by up to 30 sec for github.com/PlanktoScope/pallet-standard.
 if ! $FORKLIFT stage apply; then
